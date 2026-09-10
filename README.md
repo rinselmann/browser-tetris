@@ -149,3 +149,10 @@ Suggested build order, roughly dependency-first:
    and switch the environment to `jsdom`.
 8. **E2E and CI** — Playwright for a real browser run, and a GitHub Actions workflow running
    `typecheck`, `lint`, `format:check`, `test:run`, and `build`.
+
+## Credits
+
+Game assets — block sprites, music, and sound effects — come from the
+[Tetris Asset Pack](https://hat-tap.itch.io/tetris-asset-pack) by hat-tap on itch.io.
+
+Tetris is a trademark of the Tetris Company. This is an unaffiliated hobby clone.
