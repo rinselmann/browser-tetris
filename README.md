@@ -72,6 +72,13 @@ R3F 10 ships (it's alpha at time of writing); until then, treat React upgrades a
 minor behind the current release. Keeping the two in lockstep avoids type errors on newer `three`
 APIs. Bump both together.
 
+**[Gameplay of Tetris](https://tetris.wiki/Gameplay_of_Tetris) is the gameplay spec.** Board
+dimensions, the seven tetrominoes, gravity and lock delay, the 7-bag randomiser, hold, the ghost
+piece, line-clear and T-spin scoring, and level progression all follow that page rather than any
+one particular version of the game. Where it describes several historical behaviours, take the
+modern guideline one. Like SRS below, none of it is implemented yet — it's the reference the logic
+in `src/lib/` will be written and tested against.
+
 **Rotation follows the [Super Rotation System](https://tetris.wiki/Super_Rotation_System) (SRS).**
 That's the modern-guideline standard: fixed spawn orientations, rotation about the piece's centre,
 and the five-candidate wall-kick tables (with the separate table for I) that make T-spins and
