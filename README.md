@@ -72,6 +72,13 @@ R3F 10 ships (it's alpha at time of writing); until then, treat React upgrades a
 minor behind the current release. Keeping the two in lockstep avoids type errors on newer `three`
 APIs. Bump both together.
 
+**Rotation follows the [Super Rotation System](https://tetris.wiki/Super_Rotation_System) (SRS).**
+That's the modern-guideline standard: fixed spawn orientations, rotation about the piece's centre,
+and the five-candidate wall-kick tables (with the separate table for I) that make T-spins and
+kick-outs behave the way players expect. Nothing implements it yet — see "What's incomplete" — but
+it's the spec the rotation code is being written against, so wall-kick tests should assert against
+the tables on that page rather than against hand-rolled behaviour.
+
 **Vitest over Jest,** for native TS/ESM handling, near-zero config, and a fast watch loop — which
 matters because the game logic is where the tests will live.
 
@@ -120,7 +127,8 @@ Suggested build order, roughly dependency-first:
 
 1. **Domain types and constants** in `src/lib/` — `Cell`, `Piece`, `Board`, the seven tetromino
    shapes, board dimensions.
-2. **Pure functions, test-first** — spawn, rotate (SRS with wall kicks), collision detection, lock,
+2. **Pure functions, test-first** — spawn, rotate
+   ([SRS](https://tetris.wiki/Super_Rotation_System) with wall kicks), collision detection, lock,
    line clear, scoring. This is what the Vitest setup exists for.
 3. **State management** — a reducer over the pure functions, exposed through a `useGame` hook.
 4. **Input and timing** — keyboard handling (DAS/ARR for held keys) and a gravity loop driven by
