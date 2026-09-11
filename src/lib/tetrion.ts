@@ -365,9 +365,22 @@ export class DefaultTetrion implements ITetrion {
       this._resetBag();
     }
 
-    this.currentTetromino = this.nextTetromino || this._bag.pop()!;
-    this.currentTetrominoPosition = { x: 4, y: 0 }; // Start position at the top center of the playfield
-    this.currentTetrominoRotation = 0;
+    if (!this.nextTetromino) {
+      this.nextTetromino = this._bag.pop()!;
+    }
+
+    const tetronimo = this.nextTetromino;
+    const rotation = 0;
+    const position = { x: 4, y: 0 };
+    if (!this._testTetronimoUpdate(tetronimo, rotation, position)) {
+      console.log('Game Over');
+      return;
+    }
+
+    this.currentTetromino = tetronimo;
+    this.currentTetrominoPosition = position;
+    this.currentTetrominoRotation = rotation;
+
     this._placeTetrominoOnPlayfield(
       this.currentTetromino,
       this.currentTetrominoRotation,
