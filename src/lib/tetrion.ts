@@ -11,6 +11,7 @@ export interface ITetrion {
   spawnTetromino(): void;
   rotateTetrominoLeft(): void;
   rotateTetrominoRight(): void;
+  moveTetrominoDown(): void;
   moveTetrominoLeft(): void;
   moveTetrominoRight(): void;
   tick(dt: number): void;
@@ -123,6 +124,7 @@ export class DefaultTetrion implements ITetrion {
   _frameTime: number;
   _nextFrameTime: number;
   _totalTime: number;
+  _collisionPlayfield: (TetrominoDefinition | null)[][];
 
   currentTetromino: TetrominoDefinition | null;
   currentTetrominoPosition: { x: number; y: number } | null;
@@ -138,10 +140,11 @@ export class DefaultTetrion implements ITetrion {
     this._bag = createDefaultBag(this._tetrominoes);
     this._frameCounter = 0;
     this._frameTime = 0;
-    this._nextFrameTime = 1; // 1 second per frame
+    this._nextFrameTime = 0.2; // 1 second per frame
     this._totalTime = 0;
 
     this.playfield = createEmptyPlayfield(20, 10);
+    this._collisionPlayfield = createEmptyPlayfield(20, 10);
     this.currentTetromino = null;
     this.currentTetrominoPosition = null;
     this.currentTetrominoRotation = 0;
@@ -182,7 +185,7 @@ export class DefaultTetrion implements ITetrion {
     if (this.currentTetrominoPosition) {
       this._updateCurrentTetronimo(this.currentTetromino, this.currentTetrominoRotation, {
         ...this.currentTetrominoPosition,
-        x: this.currentTetrominoPosition.x + 1,
+        x: this.currentTetrominoPosition.x - 1,
       });
     }
   }
@@ -191,9 +194,64 @@ export class DefaultTetrion implements ITetrion {
     if (this.currentTetrominoPosition) {
       this._updateCurrentTetronimo(this.currentTetromino, this.currentTetrominoRotation, {
         ...this.currentTetrominoPosition,
-        x: this.currentTetrominoPosition.x - 1,
+        x: this.currentTetrominoPosition.x + 1,
       });
     }
+  }
+
+  moveTetrominoDown(): void {
+    if (this.currentTetrominoPosition) {
+      const moved = this._updateCurrentTetronimo(
+        this.currentTetromino,
+        this.currentTetrominoRotation,
+        {
+          ...this.currentTetrominoPosition,
+          y: this.currentTetrominoPosition.y + 1,
+        },
+      );
+
+      if (!moved) {
+        this._lockCurrentTetronimo();
+      }
+    }
+  }
+
+  _lockCurrentTetronimo() {
+    this.currentTetromino = null;
+    this.currentTetrominoPosition = null;
+    this.currentTetrominoRotation = 0;
+    for (let row = 0; row < this.playfield.length; row++) {
+      for (let col = 0; col < this.playfield[row].length; col++) {
+        this._collisionPlayfield[row][col] = this.playfield[row][col];
+      }
+    }
+  }
+
+  _testTetronimoUpdate(
+    tetromino: TetrominoDefinition,
+    rotation: number,
+    position: { x: number; y: number },
+  ) {
+    const shape = tetromino.rotations[rotation];
+    const playfield = this._collisionPlayfield;
+    for (let row = 0; row < shape.length; row++) {
+      for (let col = 0; col < shape[row].length; col++) {
+        if (shape[row][col]) {
+          const playfieldRow = position.y + row;
+          const playfieldCol = position.x + col;
+
+          const isOutOfBounds =
+            playfieldRow >= playfield.length ||
+            playfieldCol < 0 ||
+            playfieldCol >= playfield[playfieldRow].length;
+          if (isOutOfBounds || (playfieldRow >= 0 && playfield[playfieldRow][playfieldCol])) {
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
   }
 
   _advanceFrame() {
@@ -202,10 +260,7 @@ export class DefaultTetrion implements ITetrion {
 
     // Move the current tetromino down by one row
     if (this.currentTetromino && this.currentTetrominoPosition) {
-      this._updateCurrentTetronimo(this.currentTetromino, this.currentTetrominoRotation, {
-        ...this.currentTetrominoPosition,
-        y: this.currentTetrominoPosition.y + 1,
-      });
+      this.moveTetrominoDown();
 
       // Here you would typically check for collisions and lock the tetromino if it can't move down
     } else {
@@ -223,11 +278,18 @@ export class DefaultTetrion implements ITetrion {
     rotation: number,
     position: { x: number; y: number } | null,
   ) {
-    this._clearCurrentTetrominoFromPlayfield();
-    this.currentTetromino = tetronimo;
-    this.currentTetrominoRotation = rotation;
-    this.currentTetrominoPosition = position;
-    this._placeCurrentTetronimoOnPlayfield();
+    const isValid =
+      !tetronimo || !position || this._testTetronimoUpdate(tetronimo, rotation, position);
+
+    if (isValid) {
+      this._clearCurrentTetrominoFromPlayfield();
+      this.currentTetromino = tetronimo;
+      this.currentTetrominoRotation = rotation;
+      this.currentTetrominoPosition = position;
+      this._placeCurrentTetronimoOnPlayfield();
+    }
+
+    return isValid;
   }
 
   _placeCurrentTetronimoOnPlayfield() {
