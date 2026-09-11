@@ -54,6 +54,14 @@ export function TetrionBlocks({ rows = 20, columns = 10 }: { rows?: number; colu
     if (controls.rotateRight && !inputStateRef.current.rotateRight) {
       tetrion.rotateTetrominoRight();
     }
+
+    // Space key activates soft drop
+    if (controls.softDrop && !inputStateRef.current.softDrop) {
+      tetrion.activateSoftDrop();
+    } else if (!controls.softDrop && inputStateRef.current.softDrop) {
+      tetrion.deactivateSoftDrop();
+    }
+
     inputStateRef.current = controls;
   });
 
@@ -77,6 +85,7 @@ enum Controls {
   moveRight = "moveRight",
   rotateLeft = "rotateLeft",
   rotateRight = "rotateRight",
+  softDrop = "softDrop",
 }
 
 export function Tetrion() {
@@ -96,6 +105,7 @@ export function Tetrion() {
       { name: Controls.moveRight, keys: ["ArrowRight", "D"] },
       { name: Controls.rotateLeft, keys: ["ArrowUp", "W"] },
       { name: Controls.rotateRight, keys: ["ArrowDown", "S"] },
+      { name: Controls.softDrop, keys: ["Space"] },
     ],
     [],
   );

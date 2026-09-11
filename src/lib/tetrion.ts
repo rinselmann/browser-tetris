@@ -14,6 +14,8 @@ export interface ITetrion {
   moveTetrominoDown(): void;
   moveTetrominoLeft(): void;
   moveTetrominoRight(): void;
+  activateSoftDrop(): void;
+  deactivateSoftDrop(): void;
   tick(dt: number): void;
 }
 
@@ -125,6 +127,7 @@ export class DefaultTetrion implements ITetrion {
   _nextFrameTime: number;
   _totalTime: number;
   _collisionPlayfield: (TetrominoDefinition | null)[][];
+  _gravityMultiplier: number;
 
   currentTetromino: TetrominoDefinition | null;
   currentTetrominoPosition: { x: number; y: number } | null;
@@ -142,6 +145,7 @@ export class DefaultTetrion implements ITetrion {
     this._frameTime = 0;
     this._nextFrameTime = 0.2; // 1 second per frame
     this._totalTime = 0;
+    this._gravityMultiplier = 1.0;
 
     this.playfield = createEmptyPlayfield(20, 10);
     this._collisionPlayfield = createEmptyPlayfield(20, 10);
@@ -160,7 +164,7 @@ export class DefaultTetrion implements ITetrion {
   tick(dt: number) {
     this._totalTime += dt;
     this._frameTime += dt;
-    while (this._frameTime >= this._nextFrameTime) {
+    while (this._frameTime >= this._nextFrameTime * this._gravityMultiplier) {
       this._advanceFrame();
     }
   }
@@ -216,6 +220,14 @@ export class DefaultTetrion implements ITetrion {
     }
   }
 
+  activateSoftDrop() {
+    this._gravityMultiplier = 0.25;
+  }
+
+  deactivateSoftDrop() {
+    this._gravityMultiplier = 1.0;
+  }
+
   _lockCurrentTetronimo() {
     this.currentTetromino = null;
     this.currentTetrominoPosition = null;
@@ -256,7 +268,7 @@ export class DefaultTetrion implements ITetrion {
 
   _advanceFrame() {
     this._frameCounter++;
-    this._frameTime -= this._nextFrameTime;
+    this._frameTime -= this._nextFrameTime * this._gravityMultiplier;
 
     // Move the current tetromino down by one row
     if (this.currentTetromino && this.currentTetrominoPosition) {
@@ -373,7 +385,7 @@ export class DefaultTetrion implements ITetrion {
     const rotation = 0;
     const position = { x: 4, y: 0 };
     if (!this._testTetronimoUpdate(tetronimo, rotation, position)) {
-      console.log('Game Over');
+      console.log("Game Over");
       return;
     }
 
