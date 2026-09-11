@@ -22,6 +22,7 @@ export function TetrionBlocks({ rows = 20, columns = 10 }: { rows?: number; colu
   const tetrion = useTetrion();
   const [, get] = useKeyboardControls<Controls>();
   const blocksRef = useRef<Group>(null!);
+  const inputStateRef = useRef(get());
 
   useFrame(() => {
     if (!tetrion || !blocksRef.current) {
@@ -41,18 +42,19 @@ export function TetrionBlocks({ rows = 20, columns = 10 }: { rows?: number; colu
 
     // handle input
     const controls = get();
-    if (controls.moveLeft) {
+    if (controls.moveLeft && !inputStateRef.current.moveLeft) {
       tetrion.moveTetrominoLeft();
     }
-    if (controls.moveRight) {
+    if (controls.moveRight && !inputStateRef.current.moveRight) {
       tetrion.moveTetrominoRight();
     }
-    if (controls.rotateLeft) {
+    if (controls.rotateLeft && !inputStateRef.current.rotateLeft) {
       tetrion.rotateTetrominoLeft();
     }
-    if (controls.rotateRight) {
+    if (controls.rotateRight && !inputStateRef.current.rotateRight) {
       tetrion.rotateTetrominoRight();
     }
+    inputStateRef.current = controls;
   });
 
   // Render a grid of blocks with changeable colors based on the playfield dimensions
