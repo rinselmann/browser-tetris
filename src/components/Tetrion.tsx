@@ -1,7 +1,8 @@
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { ITetrion, DefaultTetrion } from "../lib/tetrion";
 import { Group, Mesh } from "three";
+import { KeyboardControls, KeyboardControlsEntry, useKeyboardControls } from "@react-three/drei";
 
 export function TetrionGrid() {
   return (
@@ -19,20 +20,38 @@ function useTetrion() {
 
 export function TetrionBlocks({ rows = 20, columns = 10 }: { rows?: number; columns?: number }) {
   const tetrion = useTetrion();
+  const [, get] = useKeyboardControls<Controls>();
   const blocksRef = useRef<Group>(null!);
 
   useFrame(() => {
-    if (blocksRef.current && tetrion) {
-      blocksRef.current.children.forEach((block, index) => {
-        if (block instanceof Mesh) {
-          const row = index % rows;
-          const col = Math.floor(index / rows);
-          const cell = tetrion.playfield[row][col];
+    if (!tetrion || !blocksRef.current) {
+      return;
+    }
 
-          block.visible = cell !== null;
-          block.material.color.set(cell?.color || "gray");
-        }
-      });
+    blocksRef.current.children.forEach((block, index) => {
+      if (block instanceof Mesh) {
+        const row = index % rows;
+        const col = Math.floor(index / rows);
+        const cell = tetrion.playfield[row][col];
+
+        block.visible = cell !== null;
+        block.material.color.set(cell?.color || "gray");
+      }
+    });
+
+    // handle input
+    const controls = get();
+    if (controls.moveLeft) {
+      tetrion.moveTetrominoLeft();
+    }
+    if (controls.moveRight) {
+      tetrion.moveTetrominoRight();
+    }
+    if (controls.rotateLeft) {
+      tetrion.rotateTetrominoLeft();
+    }
+    if (controls.rotateRight) {
+      tetrion.rotateTetrominoRight();
     }
   });
 
@@ -51,6 +70,13 @@ export function TetrionBlocks({ rows = 20, columns = 10 }: { rows?: number; colu
   );
 }
 
+enum Controls {
+  moveLeft = "moveLeft",
+  moveRight = "moveRight",
+  rotateLeft = "rotateLeft",
+  rotateRight = "rotateRight",
+}
+
 export function Tetrion() {
   const tetrionRef = useRef<ITetrion | null>(null);
 
@@ -62,12 +88,24 @@ export function Tetrion() {
     tetrionRef.current?.tick(delta);
   });
 
+  const inputMap = useMemo<KeyboardControlsEntry<Controls>[]>(
+    () => [
+      { name: Controls.moveLeft, keys: ["ArrowLeft", "A"] },
+      { name: Controls.moveRight, keys: ["ArrowRight", "D"] },
+      { name: Controls.rotateLeft, keys: ["ArrowUp", "W"] },
+      { name: Controls.rotateRight, keys: ["ArrowDown", "S"] },
+    ],
+    [],
+  );
+
   return (
-    <TetrionContext.Provider value={tetrionRef.current}>
-      <group>
-        <TetrionGrid />
-        <TetrionBlocks />
-      </group>
-    </TetrionContext.Provider>
+    <KeyboardControls map={inputMap}>
+      <TetrionContext.Provider value={tetrionRef.current}>
+        <group>
+          <TetrionGrid />
+          <TetrionBlocks />
+        </group>
+      </TetrionContext.Provider>
+    </KeyboardControls>
   );
 }
