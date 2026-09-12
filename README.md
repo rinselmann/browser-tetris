@@ -1,5 +1,17 @@
 # browser-tetris
 
+## Todo
+
+[x] initialize tetrion
+[x] spawn tetronimo
+[x] tick tetrion
+[x] implement tetronimo falling
+[x] implement tetronimo rotation/movement
+[x] implement tetronimo soft drop
+[ ] handle wallkicks
+[ ] show next tetronimo
+[ ] implement hold tetronimo
+
 A bare [Next.js](https://nextjs.org) starting point for a browser Tetris clone. The playfield is
 rendered in WebGL via [React Three Fiber](https://r3f.docs.pmnd.rs/), not as DOM elements.
 
@@ -76,15 +88,16 @@ APIs. Bump both together.
 dimensions, the seven tetrominoes, gravity and lock delay, the 7-bag randomiser, hold, the ghost
 piece, line-clear and T-spin scoring, and level progression all follow that page rather than any
 one particular version of the game. Where it describes several historical behaviours, take the
-modern guideline one. Like SRS below, none of it is implemented yet — it's the reference the logic
-in `src/lib/` will be written and tested against.
+modern guideline one. `src/lib/tetrion.ts` implements part of it — gravity, movement, locking and
+the bag — and `src/lib/tetrion.test.ts` checks that part against the page. The rest is listed under
+"What's incomplete".
 
 **Rotation follows the [Super Rotation System](https://tetris.wiki/Super_Rotation_System) (SRS).**
 That's the modern-guideline standard: fixed spawn orientations, rotation about the piece's centre,
 and the five-candidate wall-kick tables (with the separate table for I) that make T-spins and
-kick-outs behave the way players expect. Nothing implements it yet — see "What's incomplete" — but
-it's the spec the rotation code is being written against, so wall-kick tests should assert against
-the tables on that page rather than against hand-rolled behaviour.
+kick-outs behave the way players expect. `src/lib/tetrion.ts` implements it, and
+`src/lib/tetrion.test.ts` asserts against the tables on that page rather than against the code's
+own behaviour — which is why part of the suite currently fails. See "Known spec deviations".
 
 **Vitest over Jest,** for native TS/ESM handling, near-zero config, and a fast watch loop — which
 matters because the game logic is where the tests will live.
@@ -110,16 +123,43 @@ compatible config; the deprecation warning on `npm install` is expected.
 **ESLint owns correctness, Prettier owns formatting.** `eslint-config-prettier` is applied last in
 `eslint.config.mjs` to switch off every stylistic rule that would otherwise fight Prettier.
 
+## Known spec deviations
+
+`npm run test:run` currently reports **7 failures, all deliberate**. The tests assert what the wiki
+specs say; the failures are the list of places the implementation disagrees. Nothing here is fixed
+yet — the failing tests are the specification for that work.
+
+- **Wall-kick offsets are vertically inverted.** The SRS tables are written with positive y
+  _upwards_; the playfield indexes rows top-down, and `rotateTetrominoLeft`/`Right` add `wallkick.y`
+  straight to the row index. Every non-zero vertical kick therefore moves the piece the wrong way —
+  a floor kick that should lift a piece two rows pushes it two rows down instead. The offsets need
+  negating as they are applied, or stored pre-negated.
+- **The J and L shapes are swapped.** Names and colours are right (J blue, L orange), but the piece
+  called `J` carries L's shape and vice versa.
+- **`isGameOver` is never set.** A blocked spawn logs to the console and returns, so nothing
+  observes the top-out; `_advanceFrame` then retries the spawn on every frame forever.
+
+Verified as correct, for the record: the base rotation maths and all four states of I, O, S, T and
+Z; the kick table _values_ and the transition indexing; and the 7-bag generator, which deals a full
+permutation before reshuffling.
+
 ## What's incomplete
 
-Essentially all of the game:
+The game core exists in `src/lib/tetrion.ts` — spawning, gravity, movement, rotation with wall
+kicks, soft drop and locking — driven by `src/components/Tetrion.tsx`. Missing against
+[the gameplay spec](https://tetris.wiki/Gameplay_of_Tetris):
 
-- **No game logic** — no board representation, tetromino definitions, rotation system, collision,
-  line clearing, scoring, or levels. `src/lib/` contains only a placeholder `clamp` used to prove
-  the test harness runs; delete it and its test when real logic arrives.
-- **No game state or input** — nothing reads the keyboard, and there's no game loop beyond the
-  cube's `useFrame` rotation. No pause, restart, or game-over handling.
-- **No rendering of an actual playfield** — one placeholder cube stands in for the board.
+- **No line clearing** — completed rows are never detected or removed, so the field only fills up.
+- **No scoring or levels** — `score`, `level` and `linesCleared` exist as fields but are never
+  updated, and gravity is fixed at 0.2 s/row instead of scaling with level.
+- **No lock delay** — a piece locks the instant it cannot fall, with none of the 0.5 s and
+  15 move-resets the guideline allows.
+- **No hard drop, hold, or ghost piece.** `nextTetromino` is tracked but never shown.
+- **Soft drop is 4x gravity**, where the guideline is 20x, and it awards no points.
+- **Spawn placement is off-guideline** — pieces spawn at column 4 rather than centred at column 3,
+  and inside the visible field rather than in buffer rows above it.
+- **Two pre-existing lint errors** in `src/components/Tetrion.tsx` (`react-hooks/refs`: a ref read
+  during render). `npm run lint` is red because of them, not because of the tests.
 - **No UI/component tests** — deliberate, see above.
 - **No E2E tests, no CI pipeline, no coverage thresholds.**
 - **No persistence** — no high scores, no settings.
@@ -154,5 +194,10 @@ Suggested build order, roughly dependency-first:
 
 Game assets — block sprites, music, and sound effects — come from the
 [Tetris Asset Pack](https://hat-tap.itch.io/tetris-asset-pack) by hat-tap on itch.io.
+
+The test suite in `src/lib/tetrion.test.ts`, the spec verification behind it, and the
+"Known spec deviations" section above were written by Claude (Opus 5) via
+[Claude Code](https://claude.com/claude-code). The game logic it tests is hand-written; Claude did
+not modify it, which is why those tests fail rather than pass.
 
 Tetris is a trademark of the Tetris Company. This is an unaffiliated hobby clone.
