@@ -53,21 +53,36 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
             // O->R
             { x: 0, y: 0 },
             { x: -1, y: 0 },
-            { x: -1, y: +1 },
-            { x: 0, y: -2 },
-            { x: -1, y: -2 },
+            { x: -1, y: -1 },
+            { x: 0, y: +2 },
+            { x: -1, y: +2 },
           ],
           [
             { x: 0, y: 0 },
             { x: +1, y: 0 },
-            { x: +1, y: -1 },
-            { x: 0, y: +2 },
-            { x: +1, y: +2 },
+            { x: +1, y: +1 },
+            { x: 0, y: -2 },
+            { x: +1, y: -2 },
           ],
           [
             // R->2
             { x: 0, y: 0 },
             { x: +1, y: 0 },
+            { x: +1, y: +1 },
+            { x: 0, y: -2 },
+            { x: +1, y: -2 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: -1, y: 0 },
+            { x: -1, y: -1 },
+            { x: 0, y: +2 },
+            { x: -1, y: +2 },
+          ],
+          [
+            // 2->L
+            { x: 0, y: 0 },
+            { x: +1, y: 0 },
             { x: +1, y: -1 },
             { x: 0, y: +2 },
             { x: +1, y: +2 },
@@ -80,34 +95,19 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
             { x: -1, y: -2 },
           ],
           [
-            // 2->L
-            { x: 0, y: 0 },
-            { x: +1, y: 0 },
-            { x: +1, y: +1 },
-            { x: 0, y: -2 },
-            { x: +1, y: -2 },
-          ],
-          [
-            { x: 0, y: 0 },
-            { x: -1, y: 0 },
-            { x: -1, y: -1 },
-            { x: 0, y: +2 },
-            { x: -1, y: +2 },
-          ],
-          [
             // L->0
             { x: 0, y: 0 },
             { x: -1, y: 0 },
-            { x: -1, y: -1 },
-            { x: 0, y: +2 },
-            { x: -1, y: +2 },
+            { x: -1, y: +1 },
+            { x: 0, y: -2 },
+            { x: -1, y: -2 },
           ],
           [
             { x: 0, y: 0 },
             { x: +1, y: 0 },
-            { x: +1, y: +1 },
-            { x: 0, y: -2 },
-            { x: +1, y: -2 },
+            { x: +1, y: -1 },
+            { x: 0, y: +2 },
+            { x: +1, y: +2 },
           ],
         ];
       case "I":
@@ -117,60 +117,60 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
             { x: 0, y: 0 },
             { x: -2, y: 0 },
             { x: +1, y: 0 },
-            { x: -2, y: -1 },
-            { x: +1, y: +2 },
+            { x: -2, y: +1 },
+            { x: +1, y: -2 },
           ],
           [
             { x: 0, y: 0 },
             { x: +2, y: 0 },
             { x: -1, y: 0 },
-            { x: +2, y: +1 },
-            { x: -1, y: -2 },
+            { x: +2, y: -1 },
+            { x: -1, y: +2 },
           ],
           [
             // R->2
             { x: 0, y: 0 },
             { x: -1, y: 0 },
             { x: +2, y: 0 },
-            { x: -1, y: +2 },
-            { x: +2, y: -1 },
+            { x: -1, y: -2 },
+            { x: +2, y: +1 },
           ],
           [
             { x: 0, y: 0 },
             { x: +1, y: 0 },
             { x: -2, y: 0 },
-            { x: +1, y: -2 },
-            { x: -2, y: +1 },
+            { x: +1, y: +2 },
+            { x: -2, y: -1 },
           ],
           [
             // 2->L
             { x: 0, y: 0 },
             { x: +2, y: 0 },
             { x: -1, y: 0 },
-            { x: +2, y: +1 },
-            { x: -1, y: -2 },
+            { x: +2, y: -1 },
+            { x: -1, y: +2 },
           ],
           [
             { x: 0, y: 0 },
             { x: -2, y: 0 },
             { x: +1, y: 0 },
-            { x: -2, y: -1 },
-            { x: +1, y: +2 },
+            { x: -2, y: +1 },
+            { x: +1, y: -2 },
           ],
           [
             // L->0
             { x: 0, y: 0 },
             { x: +1, y: 0 },
             { x: -2, y: 0 },
-            { x: +1, y: -2 },
-            { x: -2, y: +1 },
+            { x: +1, y: +2 },
+            { x: -2, y: -1 },
           ],
           [
             { x: 0, y: 0 },
             { x: -1, y: 0 },
             { x: +2, y: 0 },
-            { x: -1, y: +2 },
-            { x: +2, y: -1 },
+            { x: -1, y: -2 },
+            { x: +2, y: +1 },
           ],
         ];
       case "O":
@@ -191,8 +191,8 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
       wallkicks: createWallkicks("I"),
     },
     {
-      name: "L",
-      color: "orange",
+      name: "J",
+      color: "blue",
       rotations: createRotations([
         [true, false, false],
         [true, true, true],
@@ -201,8 +201,8 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
       wallkicks: createWallkicks("L"),
     },
     {
-      name: "J",
-      color: "blue",
+      name: "L",
+      color: "orange",
       rotations: createRotations([
         [false, false, true],
         [true, true, true],
@@ -559,6 +559,7 @@ export class DefaultTetrion implements ITetrion {
     const rotation = 0;
     const position = { x: 4, y: 0 };
     if (!this._testTetronimoUpdate(tetronimo, rotation, position)) {
+      this.isGameOver = true;
       console.log("Game Over");
       return;
     }

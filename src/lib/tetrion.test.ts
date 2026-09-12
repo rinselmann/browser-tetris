@@ -432,7 +432,7 @@ describe("7-bag random generator", () => {
     const bag = createDefaultBag(tetrominoes);
 
     expect(bag.map((piece) => piece.name).sort()).toEqual(["I", "J", "L", "O", "S", "T", "Z"]);
-    expect(tetrominoes.map((piece) => piece.name)).toEqual(["I", "L", "J", "O", "S", "T", "Z"]);
+    expect(tetrominoes.map((piece) => piece.name)).toEqual(["I", "J", "L", "O", "S", "T", "Z"]);
   });
 
   it("draws from the end of the bag and keeps one piece in reserve", () => {
