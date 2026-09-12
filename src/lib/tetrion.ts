@@ -4,6 +4,7 @@ interface TetrominoDefinition {
   name: string;
   color: string;
   rotations: boolean[][][];
+  wallkicks: { x: number; y: number }[][];
 }
 
 export interface ITetrion {
@@ -44,6 +45,139 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
     return rotations;
   }
 
+  function createWallkicks(name: string) {
+    switch (name) {
+      default:
+        return [
+          [
+            // O->R
+            { x: 0, y: 0 },
+            { x: -1, y: 0 },
+            { x: -1, y: +1 },
+            { x: 0, y: -2 },
+            { x: -1, y: -2 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: +1, y: 0 },
+            { x: +1, y: -1 },
+            { x: 0, y: +2 },
+            { x: +1, y: +2 },
+          ],
+          [
+            // R->2
+            { x: 0, y: 0 },
+            { x: +1, y: 0 },
+            { x: +1, y: -1 },
+            { x: 0, y: +2 },
+            { x: +1, y: +2 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: -1, y: 0 },
+            { x: -1, y: +1 },
+            { x: 0, y: -2 },
+            { x: -1, y: -2 },
+          ],
+          [
+            // 2->L
+            { x: 0, y: 0 },
+            { x: +1, y: 0 },
+            { x: +1, y: +1 },
+            { x: 0, y: -2 },
+            { x: +1, y: -2 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: -1, y: 0 },
+            { x: -1, y: -1 },
+            { x: 0, y: +2 },
+            { x: -1, y: +2 },
+          ],
+          [
+            // L->0
+            { x: 0, y: 0 },
+            { x: -1, y: 0 },
+            { x: -1, y: -1 },
+            { x: 0, y: +2 },
+            { x: -1, y: +2 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: +1, y: 0 },
+            { x: +1, y: +1 },
+            { x: 0, y: -2 },
+            { x: +1, y: -2 },
+          ],
+        ];
+      case "I":
+        return [
+          [
+            // 0->R
+            { x: 0, y: 0 },
+            { x: -2, y: 0 },
+            { x: +1, y: 0 },
+            { x: -2, y: -1 },
+            { x: +1, y: +2 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: +2, y: 0 },
+            { x: -1, y: 0 },
+            { x: +2, y: +1 },
+            { x: -1, y: -2 },
+          ],
+          [
+            // R->2
+            { x: 0, y: 0 },
+            { x: -1, y: 0 },
+            { x: +2, y: 0 },
+            { x: -1, y: +2 },
+            { x: +2, y: -1 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: +1, y: 0 },
+            { x: -2, y: 0 },
+            { x: +1, y: -2 },
+            { x: -2, y: +1 },
+          ],
+          [
+            // 2->L
+            { x: 0, y: 0 },
+            { x: +2, y: 0 },
+            { x: -1, y: 0 },
+            { x: +2, y: +1 },
+            { x: -1, y: -2 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: -2, y: 0 },
+            { x: +1, y: 0 },
+            { x: -2, y: -1 },
+            { x: +1, y: +2 },
+          ],
+          [
+            // L->0
+            { x: 0, y: 0 },
+            { x: +1, y: 0 },
+            { x: -2, y: 0 },
+            { x: +1, y: -2 },
+            { x: -2, y: +1 },
+          ],
+          [
+            { x: 0, y: 0 },
+            { x: -1, y: 0 },
+            { x: +2, y: 0 },
+            { x: -1, y: +2 },
+            { x: +2, y: -1 },
+          ],
+        ];
+      case "O":
+        return Array(8).fill([{ x: 0, y: 0 }]);
+    }
+  }
+
   return [
     {
       name: "I",
@@ -54,6 +188,7 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
         [false, false, false, false],
         [false, false, false, false],
       ]),
+      wallkicks: createWallkicks("I"),
     },
     {
       name: "L",
@@ -63,6 +198,7 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
         [true, true, true],
         [false, false, false],
       ]),
+      wallkicks: createWallkicks("L"),
     },
     {
       name: "J",
@@ -72,6 +208,7 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
         [true, true, true],
         [false, false, false],
       ]),
+      wallkicks: createWallkicks("J"),
     },
     {
       name: "O",
@@ -82,6 +219,7 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
         [false, true, true, false],
         [false, false, false, false],
       ]),
+      wallkicks: createWallkicks("O"),
     },
     {
       name: "S",
@@ -91,6 +229,7 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
         [true, true, false],
         [false, false, false],
       ]),
+      wallkicks: createWallkicks("S"),
     },
     {
       name: "T",
@@ -100,6 +239,7 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
         [true, true, true],
         [false, false, false],
       ]),
+      wallkicks: createWallkicks("T"),
     },
     {
       name: "Z",
@@ -109,6 +249,7 @@ export function createDefaultTetrominoes(): TetrominoDefinition[] {
         [false, true, true],
         [false, false, false],
       ]),
+      wallkicks: createWallkicks("Z"),
     },
   ];
 }
@@ -170,19 +311,52 @@ export class DefaultTetrion implements ITetrion {
   }
 
   rotateTetrominoLeft() {
-    this._updateCurrentTetronimo(
-      this.currentTetromino,
-      (this.currentTetrominoRotation + 3) % 4,
-      this.currentTetrominoPosition,
-    );
+    if (!this.currentTetromino || !this.currentTetrominoPosition) {
+      return;
+    }
+
+    const wallkicks = this.currentTetromino?.wallkicks[
+      (this.currentTetrominoRotation * 2 + 7) % 8
+    ] || [{ x: 0, y: 0 }];
+    for (const wallkick of wallkicks) {
+      const position = {
+        x: this.currentTetrominoPosition.x + wallkick.x,
+        y: this.currentTetrominoPosition.y + wallkick.y,
+      };
+      const updated = this._updateCurrentTetronimo(
+        this.currentTetromino,
+        (this.currentTetrominoRotation + 3) % 4,
+        position,
+      );
+      if (updated) {
+        break;
+      }
+    }
   }
 
   rotateTetrominoRight() {
-    this._updateCurrentTetronimo(
-      this.currentTetromino,
-      (this.currentTetrominoRotation + 1) % 4,
-      this.currentTetrominoPosition,
-    );
+    if (!this.currentTetromino || !this.currentTetrominoPosition) {
+      return;
+    }
+
+    const wallkicks = this.currentTetromino?.wallkicks[this.currentTetrominoRotation * 2] || [
+      { x: 0, y: 0 },
+    ];
+    for (const wallkick of wallkicks) {
+      const position = {
+        x: this.currentTetrominoPosition.x + wallkick.x,
+        y: this.currentTetrominoPosition.y + wallkick.y,
+      };
+      const updated = this._updateCurrentTetronimo(
+        this.currentTetromino,
+        (this.currentTetrominoRotation + 1) % 4,
+        position,
+      );
+
+      if (updated) {
+        break;
+      }
+    }
   }
 
   moveTetrominoLeft() {
