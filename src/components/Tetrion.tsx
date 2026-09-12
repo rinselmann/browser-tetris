@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef } from "react";
+import { RefObject, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { ITetrion, DefaultTetrion } from "../lib/tetrion";
 import { Group, Mesh } from "three";
@@ -13,18 +13,19 @@ export function TetrionGrid() {
   );
 }
 
-const TetrionContext = createContext<ITetrion | null>(null);
-function useTetrion() {
-  return useContext(TetrionContext);
+interface TetrionBlocksProps {
+  rows?: number;
+  columns?: number;
+  tetrionRef: RefObject<ITetrion | null>;
 }
 
-export function TetrionBlocks({ rows = 20, columns = 10 }: { rows?: number; columns?: number }) {
-  const tetrion = useTetrion();
+export function TetrionBlocks({ rows = 20, columns = 10, tetrionRef }: TetrionBlocksProps) {
   const [, get] = useKeyboardControls<Controls>();
   const blocksRef = useRef<Group>(null!);
   const inputStateRef = useRef(get());
 
   useFrame(() => {
+    const tetrion = tetrionRef.current;
     if (!tetrion || !blocksRef.current) {
       return;
     }
@@ -91,11 +92,11 @@ enum Controls {
 export function Tetrion() {
   const tetrionRef = useRef<ITetrion | null>(null);
 
-  if (!tetrionRef.current) {
-    tetrionRef.current = new DefaultTetrion();
-  }
-
   useFrame((_state, delta) => {
+    if (!tetrionRef.current) {
+      tetrionRef.current = new DefaultTetrion();
+    }
+
     tetrionRef.current?.tick(delta);
   });
 
@@ -112,12 +113,10 @@ export function Tetrion() {
 
   return (
     <KeyboardControls map={inputMap}>
-      <TetrionContext.Provider value={tetrionRef.current}>
-        <group>
-          <TetrionGrid />
-          <TetrionBlocks />
-        </group>
-      </TetrionContext.Provider>
+      <group>
+        <TetrionGrid />
+        <TetrionBlocks tetrionRef={tetrionRef} />
+      </group>
     </KeyboardControls>
   );
 }
