@@ -3,12 +3,15 @@
 ## Todo
 
 [x] initialize tetrion
-[x] spawn tetronimo
+[ ] spawn tetronimo
 [x] tick tetrion
-[x] implement tetronimo falling
-[x] implement tetronimo rotation/movement
-[x] implement tetronimo soft drop
-[ ] handle wallkicks
+[x] tetronimo falling
+[x] rotation/movement
+[ ] soft drop (20x)
+[x] handle wallkicks
+[ ] line clearing
+[ ] lock delay
+[ ] hard drop
 [ ] show next tetronimo
 [ ] implement hold tetronimo
 
@@ -97,7 +100,7 @@ That's the modern-guideline standard: fixed spawn orientations, rotation about t
 and the five-candidate wall-kick tables (with the separate table for I) that make T-spins and
 kick-outs behave the way players expect. `src/lib/tetrion.ts` implements it, and
 `src/lib/tetrion.test.ts` asserts against the tables on that page rather than against the code's
-own behaviour — which is why part of the suite currently fails. See "Known spec deviations".
+own behaviour — which is how three transcription bugs were caught. See "Spec conformance".
 
 **Vitest over Jest,** for native TS/ESM handling, near-zero config, and a fast watch loop — which
 matters because the game logic is where the tests will live.
@@ -123,43 +126,46 @@ compatible config; the deprecation warning on `npm install` is expected.
 **ESLint owns correctness, Prettier owns formatting.** `eslint-config-prettier` is applied last in
 `eslint.config.mjs` to switch off every stylistic rule that would otherwise fight Prettier.
 
-## Known spec deviations
+## Spec conformance
 
-`npm run test:run` currently reports **7 failures, all deliberate**. The tests assert what the wiki
-specs say; the failures are the list of places the implementation disagrees. Nothing here is fixed
-yet — the failing tests are the specification for that work.
+`src/lib/tetrion.test.ts` checks the tetrion against the wiki pages rather than against its own
+behaviour, so the suite is the record of how far the implementation has got.
 
-- **Wall-kick offsets are vertically inverted.** The SRS tables are written with positive y
-  _upwards_; the playfield indexes rows top-down, and `rotateTetrominoLeft`/`Right` add `wallkick.y`
-  straight to the row index. Every non-zero vertical kick therefore moves the piece the wrong way —
-  a floor kick that should lift a piece two rows pushes it two rows down instead. The offsets need
-  negating as they are applied, or stored pre-negated.
-- **The J and L shapes are swapped.** Names and colours are right (J blue, L orange), but the piece
-  called `J` carries L's shape and vice versa.
-- **`isGameOver` is never set.** A blocked spawn logs to the console and returns, so nothing
-  observes the top-out; `_advanceFrame` then retries the spawn on every frame forever.
+**Verified correct.** The base rotation maths and all four states of every piece; the SRS kick
+tables, their values, their vertical sign and the transition indexing; the 7-bag generator, which
+deals a full permutation before reshuffling and never strands a piece more than twelve draws; and
+movement, collision and top-out detection.
 
-Verified as correct, for the record: the base rotation maths and all four states of I, O, S, T and
-Z; the kick table _values_ and the transition indexing; and the 7-bag generator, which deals a full
-permutation before reshuffling.
+Three deviations were found by the first pass of this suite and have since been fixed: the kick
+offsets were vertically inverted (the wiki tables are y-up, the playfield indexes rows top-down),
+the J and L shapes were attached to each other's names, and `isGameOver` was never set on a blocked
+spawn. The tests that caught them are still in place.
+
+**Still red on purpose.** Around 42 tests fail because the feature they describe does not exist
+yet, not because anything is wrong. They are listed below and they go green as each feature lands.
 
 ## What's incomplete
 
 The game core exists in `src/lib/tetrion.ts` — spawning, gravity, movement, rotation with wall
-kicks, soft drop and locking — driven by `src/components/Tetrion.tsx`. Missing against
-[the gameplay spec](https://tetris.wiki/Gameplay_of_Tetris):
+kicks, soft drop and locking — driven by `src/components/Tetrion.tsx`. Everything below has failing
+tests waiting for it in `src/lib/tetrion.test.ts`, so `npm run test:run` doubles as the to-do list.
+Measured against [the gameplay spec](https://tetris.wiki/Gameplay_of_Tetris):
 
 - **No line clearing** — completed rows are never detected or removed, so the field only fills up.
+  6 failing tests.
 - **No scoring or levels** — `score`, `level` and `linesCleared` exist as fields but are never
-  updated, and gravity is fixed at 0.2 s/row instead of scaling with level.
+  updated, and gravity is a fixed interval instead of the guideline curve
+  `(0.8 - (level - 1) * 0.007) ^ (level - 1)` seconds per row. 10 failing tests.
 - **No lock delay** — a piece locks the instant it cannot fall, with none of the 0.5 s and
-  15 move-resets the guideline allows.
-- **No hard drop, hold, or ghost piece.** `nextTetromino` is tracked but never shown.
-- **Soft drop is 4x gravity**, where the guideline is 20x, and it awards no points.
+  15 move-resets the guideline allows. 6 failing tests.
+- **No hard drop, hold, or ghost piece.** `nextTetromino` is tracked but never shown. 10 failing
+  tests, written against a `PlannedTetrion` interface declared in the test file — `hardDrop()`,
+  `hold()`, `heldTetromino`, `ghostPosition` — so they name the API to build without `tetrion.ts`
+  having to declare it yet.
+- **Soft drop is 4x gravity**, where the guideline is 20x, and it awards no points. 2 failing
+  tests, measured at level 10 because at level 1 both rates happen to land on 0.05 s per row.
 - **Spawn placement is off-guideline** — pieces spawn at column 4 rather than centred at column 3,
-  and inside the visible field rather than in buffer rows above it.
-- **Two pre-existing lint errors** in `src/components/Tetrion.tsx` (`react-hooks/refs`: a ref read
-  during render). `npm run lint` is red because of them, not because of the tests.
+  and inside the visible field rather than in buffer rows above it. 4 failing tests.
 - **No UI/component tests** — deliberate, see above.
 - **No E2E tests, no CI pipeline, no coverage thresholds.**
 - **No persistence** — no high scores, no settings.
@@ -196,8 +202,9 @@ Game assets — block sprites, music, and sound effects — come from the
 [Tetris Asset Pack](https://hat-tap.itch.io/tetris-asset-pack) by hat-tap on itch.io.
 
 The test suite in `src/lib/tetrion.test.ts`, the spec verification behind it, and the
-"Known spec deviations" section above were written by Claude (Opus 5) via
-[Claude Code](https://claude.com/claude-code). The game logic it tests is hand-written; Claude did
-not modify it, which is why those tests fail rather than pass.
+"Spec conformance" section above were written by Claude (Opus 5) via
+[Claude Code](https://claude.com/claude-code). The game logic it tests is hand-written; Claude has
+not modified it, so the tests that stay red are describing work still to do rather than reporting
+a regression.
 
 Tetris is a trademark of the Tetris Company. This is an unaffiliated hobby clone.

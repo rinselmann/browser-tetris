@@ -18,6 +18,9 @@ import {
 const ROWS = 20;
 const COLS = 10;
 
+/** Guideline lock delay, in seconds. */
+const LOCK_DELAY = 0.5;
+
 type Tetromino = ReturnType<typeof createDefaultTetrominoes>[number];
 
 function pieceNamed(name: string): Tetromino {
@@ -59,12 +62,73 @@ function place(
   tetrion._placeCurrentTetronimoOnPlayfield();
 }
 
-/** Marks cells as occupied by locked blocks. */
+/**
+ * Marks cells as occupied by locked blocks. Writes both playfields because locking
+ * copies `playfield` over `_collisionPlayfield`, which would otherwise wipe a fixture
+ * that only set the collision field.
+ */
 function block(tetrion: DefaultTetrion, cells: [number, number][]) {
   const filler = pieceNamed("O");
   for (const [row, col] of cells) {
     tetrion._collisionPlayfield[row][col] = filler;
+    tetrion.playfield[row][col] = filler;
   }
+}
+
+/** Fills a whole row with locked blocks except the given columns. */
+function fillRowExcept(tetrion: DefaultTetrion, row: number, gaps: number[]) {
+  const cells: [number, number][] = [];
+  for (let col = 0; col < COLS; col++) {
+    if (!gaps.includes(col)) {
+      cells.push([row, col]);
+    }
+  }
+  block(tetrion, cells);
+}
+
+/** Columns holding a locked block in one row. */
+function filledColumns(tetrion: DefaultTetrion, row: number): number[] {
+  return tetrion._collisionPlayfield[row].flatMap((cell, col) => (cell ? [col] : []));
+}
+
+/** Indices of every row holding at least one locked block. */
+function occupiedRows(tetrion: DefaultTetrion): number[] {
+  return tetrion._collisionPlayfield.flatMap((row, index) =>
+    row.some((cell) => cell) ? [index] : [],
+  );
+}
+
+/**
+ * Drops the piece one row at a time until it locks, waiting out the lock delay if
+ * the piece lands without locking. Works whether or not lock delay is implemented.
+ */
+function dropUntilLocked(tetrion: DefaultTetrion) {
+  for (let guard = 0; guard < ROWS + 4 && tetrion.currentTetromino; guard++) {
+    const before = tetrion.currentTetrominoPosition?.y;
+    tetrion.moveTetrominoDown();
+    if (tetrion.currentTetromino && tetrion.currentTetrominoPosition?.y === before) {
+      tetrion.tick(LOCK_DELAY + 0.1);
+      break;
+    }
+  }
+}
+
+/**
+ * Wipes the field, then fills and completes `count` rows with one vertical I,
+ * so a test can trigger a single/double/triple/tetris on demand. Repeatable:
+ * each call starts from an empty field but keeps score, level and line counters.
+ */
+function clearLines(tetrion: DefaultTetrion, count: number) {
+  tetrion.playfield = createEmptyPlayfield(ROWS, COLS);
+  tetrion._collisionPlayfield = createEmptyPlayfield(ROWS, COLS);
+  tetrion.currentTetromino = null;
+  tetrion.currentTetrominoPosition = null;
+
+  for (let row = ROWS - count; row < ROWS; row++) {
+    fillRowExcept(tetrion, row, [4]);
+  }
+  place(tetrion, pieceNamed("I"), 1, { x: 2, y: 16 });
+  dropUntilLocked(tetrion);
 }
 
 describe("tetromino definitions", () => {
@@ -509,14 +573,15 @@ describe("movement and collision", () => {
     expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 6 });
   });
 
-  it("locks the piece into the field when it cannot fall further", () => {
+  it("locks the piece into the field once the lock delay expires", () => {
     const tetrion = freshTetrion();
     place(tetrion, pieceNamed("T"), 0, { x: 4, y: 18 });
 
     tetrion.moveTetrominoDown();
+    expect(tetrion.currentTetromino).not.toBeNull();
 
-    expect(tetrion.currentTetromino).toBeNull();
-    expect(tetrion.currentTetrominoPosition).toBeNull();
+    tetrion.tick(LOCK_DELAY + 0.1);
+
     expect(tetrion._collisionPlayfield[18][5]).not.toBeNull();
     expect(tetrion._collisionPlayfield[19][4]).not.toBeNull();
     expect(tetrion._collisionPlayfield[19][5]).not.toBeNull();
@@ -536,7 +601,9 @@ describe("movement and collision", () => {
     expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 17 });
 
     tetrion.moveTetrominoDown();
-    expect(tetrion.currentTetromino).toBeNull();
+    expect(tetrion.currentTetromino).not.toBeNull();
+
+    tetrion.tick(LOCK_DELAY + 0.1);
     expect(tetrion._collisionPlayfield[18][4]).not.toBeNull();
   });
 });
@@ -546,10 +613,10 @@ describe("gravity and tick", () => {
     const tetrion = freshTetrion();
     place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
 
-    tetrion.tick(0.1);
+    tetrion.tick(0.5);
     expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 2 });
 
-    tetrion.tick(0.1);
+    tetrion.tick(0.6);
     expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 3 });
   });
 
@@ -557,19 +624,36 @@ describe("gravity and tick", () => {
     const tetrion = freshTetrion();
     place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
 
-    tetrion.tick(0.65);
+    tetrion.tick(3.2);
 
     expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 5 });
   });
 
-  it("falls faster while soft drop is held", () => {
+  /**
+   * Measured at level 10 on purpose: at level 1 the current 4x-of-0.2s and the
+   * guideline 20x-of-1.0s both come to 0.05s per row, so only a higher level
+   * separates them. Level 10 gravity is ~0.0642s, so soft drop is ~0.0032s.
+   */
+  it("drops at twenty times the level's gravity while soft drop is held", () => {
+    const tetrion = freshTetrion();
+    tetrion.level = 10;
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    tetrion.activateSoftDrop();
+    tetrion.tick(0.02);
+
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 8 });
+  });
+
+  it("awards one point per cell soft dropped", () => {
     const tetrion = freshTetrion();
     place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
 
     tetrion.activateSoftDrop();
-    tetrion.tick(0.05);
+    tetrion.tick(0.25); // five rows at 0.05s each
 
-    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 3 });
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 7 });
+    expect(tetrion.score).toBe(5);
   });
 
   it("returns to normal gravity when soft drop is released", () => {
@@ -642,5 +726,484 @@ describe("game over", () => {
     tetrion.tick(1);
 
     expect(tetrion.currentTetromino).toBeNull();
+  });
+});
+
+/**
+ * Line clearing — https://tetris.wiki/Gameplay_of_Tetris
+ *
+ * Not implemented: rows are never checked or removed when a piece locks, so every
+ * test in this block fails until clearing lands.
+ */
+describe("line clearing", () => {
+  it("clears a completed row when the piece locks", () => {
+    const tetrion = freshTetrion();
+    fillRowExcept(tetrion, 19, [4]);
+    place(tetrion, pieceNamed("I"), 1, { x: 2, y: 16 });
+
+    dropUntilLocked(tetrion);
+
+    expect(occupiedRows(tetrion)).toEqual([17, 18, 19]);
+    expect(filledColumns(tetrion, 19)).toEqual([4]);
+  });
+
+  it("shifts the rows above a cleared row down by one", () => {
+    const tetrion = freshTetrion();
+    fillRowExcept(tetrion, 19, [4]);
+    block(tetrion, [[15, 0]]);
+    place(tetrion, pieceNamed("I"), 1, { x: 2, y: 16 });
+
+    dropUntilLocked(tetrion);
+
+    expect(filledColumns(tetrion, 16)).toEqual([0]);
+    expect(filledColumns(tetrion, 15)).toEqual([]);
+  });
+
+  it("leaves a row with any gap untouched", () => {
+    const tetrion = freshTetrion();
+    fillRowExcept(tetrion, 19, [4, 7]);
+    place(tetrion, pieceNamed("I"), 1, { x: 2, y: 16 });
+
+    dropUntilLocked(tetrion);
+
+    expect(occupiedRows(tetrion)).toEqual([16, 17, 18, 19]);
+    expect(filledColumns(tetrion, 19)).toHaveLength(9);
+  });
+
+  it("clears two completed rows at once", () => {
+    const tetrion = freshTetrion();
+    fillRowExcept(tetrion, 18, [4]);
+    fillRowExcept(tetrion, 19, [4]);
+    place(tetrion, pieceNamed("I"), 1, { x: 2, y: 16 });
+
+    dropUntilLocked(tetrion);
+
+    expect(occupiedRows(tetrion)).toEqual([18, 19]);
+    expect(filledColumns(tetrion, 18)).toEqual([4]);
+    expect(filledColumns(tetrion, 19)).toEqual([4]);
+  });
+
+  it("clears four rows at once", () => {
+    const tetrion = freshTetrion();
+    for (const row of [16, 17, 18, 19]) {
+      fillRowExcept(tetrion, row, [4]);
+    }
+    place(tetrion, pieceNamed("I"), 1, { x: 2, y: 16 });
+
+    dropUntilLocked(tetrion);
+
+    expect(occupiedRows(tetrion)).toEqual([]);
+  });
+
+  it("clears non-adjacent completed rows and closes both gaps", () => {
+    const tetrion = freshTetrion();
+    fillRowExcept(tetrion, 17, [4]);
+    fillRowExcept(tetrion, 19, [4]);
+    block(tetrion, [[18, 0]]);
+    place(tetrion, pieceNamed("I"), 1, { x: 2, y: 16 });
+
+    dropUntilLocked(tetrion);
+
+    expect(occupiedRows(tetrion)).toEqual([18, 19]);
+    expect(filledColumns(tetrion, 18)).toEqual([4]);
+    expect(filledColumns(tetrion, 19)).toEqual([0, 4]);
+  });
+
+  it("empties the field when its only occupied row is cleared", () => {
+    const tetrion = freshTetrion();
+    fillRowExcept(tetrion, 19, [3, 4, 5, 6]);
+    place(tetrion, pieceNamed("I"), 0, { x: 3, y: 18 });
+
+    dropUntilLocked(tetrion);
+
+    expect(occupiedRows(tetrion)).toEqual([]);
+  });
+});
+
+/**
+ * Scoring and levels — https://tetris.wiki/Gameplay_of_Tetris
+ *
+ * Not implemented: `score`, `level` and `linesCleared` exist as fields but nothing
+ * ever writes to them, and gravity is a fixed interval that ignores the level.
+ */
+describe("scoring and levels", () => {
+  it("starts at level one with nothing scored", () => {
+    const tetrion = freshTetrion();
+
+    expect(tetrion.score).toBe(0);
+    expect(tetrion.level).toBe(1);
+    expect(tetrion.linesCleared).toBe(0);
+  });
+
+  it("awards 100 for a single", () => {
+    const tetrion = freshTetrion();
+    clearLines(tetrion, 1);
+    expect(tetrion.score).toBe(100);
+  });
+
+  it("awards 300 for a double", () => {
+    const tetrion = freshTetrion();
+    clearLines(tetrion, 2);
+    expect(tetrion.score).toBe(300);
+  });
+
+  it("awards 500 for a triple", () => {
+    const tetrion = freshTetrion();
+    clearLines(tetrion, 3);
+    expect(tetrion.score).toBe(500);
+  });
+
+  it("awards 800 for a tetris", () => {
+    const tetrion = freshTetrion();
+    clearLines(tetrion, 4);
+    expect(tetrion.score).toBe(800);
+  });
+
+  it("multiplies the clear value by the current level", () => {
+    const tetrion = freshTetrion();
+    tetrion.level = 3;
+
+    clearLines(tetrion, 1);
+
+    expect(tetrion.score).toBe(300);
+  });
+
+  it("accumulates score across successive clears", () => {
+    const tetrion = freshTetrion();
+
+    clearLines(tetrion, 1);
+    clearLines(tetrion, 2);
+
+    expect(tetrion.score).toBe(400);
+  });
+
+  it("counts the lines it has cleared", () => {
+    const tetrion = freshTetrion();
+
+    clearLines(tetrion, 4);
+    clearLines(tetrion, 3);
+
+    expect(tetrion.linesCleared).toBe(7);
+  });
+
+  it("advances a level every ten lines", () => {
+    const tetrion = freshTetrion();
+
+    clearLines(tetrion, 4);
+    clearLines(tetrion, 4);
+    expect(tetrion.level).toBe(1);
+
+    clearLines(tetrion, 2);
+    expect(tetrion.level).toBe(2);
+  });
+
+  // Guideline gravity: (0.8 - (level - 1) * 0.007) ^ (level - 1) seconds per row.
+  it("falls one row per second at level one", () => {
+    const tetrion = freshTetrion();
+    tetrion.level = 1;
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    tetrion.tick(0.9);
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 2 });
+
+    tetrion.tick(0.2);
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 3 });
+  });
+
+  it("shortens the gravity interval as the level rises", () => {
+    const tetrion = freshTetrion();
+    tetrion.level = 10; // (0.8 - 9 * 0.007) ^ 9, about 0.064s per row
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    tetrion.tick(0.05);
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 2 });
+
+    tetrion.tick(0.03);
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 3 });
+  });
+});
+
+/**
+ * Lock delay — https://tetris.wiki/Gameplay_of_Tetris
+ *
+ * Not implemented: `moveTetrominoDown` locks the instant a piece cannot descend,
+ * so there is no slide window and no reset budget.
+ */
+describe("lock delay", () => {
+  /**
+   * Lands a piece flat on the floor and returns it, so a test can assert the very
+   * same piece is still in play — a respawn after an early lock would also leave
+   * `currentTetromino` non-null, which would otherwise pass by accident.
+   */
+  function land(tetrion: DefaultTetrion, name: string): Tetromino {
+    const piece = pieceNamed(name);
+    place(tetrion, piece, 0, { x: 4, y: 18 });
+    tetrion.moveTetrominoDown();
+    return piece;
+  }
+
+  it("does not lock the piece on the tick it lands", () => {
+    const tetrion = freshTetrion();
+
+    const piece = land(tetrion, "T");
+
+    expect(tetrion.currentTetromino).toBe(piece);
+  });
+
+  it("keeps the piece in play for the first half second", () => {
+    const tetrion = freshTetrion();
+    const piece = land(tetrion, "T");
+
+    tetrion.tick(LOCK_DELAY - 0.1);
+
+    expect(tetrion.currentTetromino).toBe(piece);
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 4, y: 18 });
+  });
+
+  it("locks the piece once the delay expires", () => {
+    const tetrion = freshTetrion();
+    land(tetrion, "T");
+
+    tetrion.tick(LOCK_DELAY + 0.1);
+
+    expect(tetrion.currentTetromino).toBeNull();
+  });
+
+  it("restarts the delay when the piece moves sideways", () => {
+    const tetrion = freshTetrion();
+    const piece = land(tetrion, "T");
+
+    tetrion.tick(LOCK_DELAY - 0.1);
+    tetrion.moveTetrominoLeft();
+    tetrion.tick(LOCK_DELAY - 0.1);
+
+    expect(tetrion.currentTetromino).toBe(piece);
+    expect(tetrion.currentTetrominoPosition).toEqual({ x: 3, y: 18 });
+  });
+
+  it("restarts the delay when the piece rotates", () => {
+    const tetrion = freshTetrion();
+    const piece = land(tetrion, "O"); // rotates in place, so it stays on the floor
+
+    tetrion.tick(LOCK_DELAY - 0.1);
+    tetrion.rotateTetrominoRight();
+    tetrion.tick(LOCK_DELAY - 0.1);
+
+    expect(tetrion.currentTetromino).toBe(piece);
+  });
+
+  it("locks regardless once the reset budget of fifteen is spent", () => {
+    const tetrion = freshTetrion();
+    const piece = land(tetrion, "O");
+
+    for (let reset = 0; reset < 15; reset++) {
+      tetrion.tick(LOCK_DELAY - 0.1);
+      tetrion.rotateTetrominoRight();
+    }
+    expect(tetrion.currentTetromino).toBe(piece);
+
+    tetrion.rotateTetrominoRight();
+    tetrion.tick(LOCK_DELAY + 0.1);
+
+    expect(tetrion.currentTetromino).toBeNull();
+  });
+});
+
+/**
+ * Hard drop, hold and ghost piece — https://tetris.wiki/Gameplay_of_Tetris
+ *
+ * Not implemented: none of these exist on the tetrion at all. The interface below
+ * declares the API they will need, so these tests fail with "not a function"
+ * rather than failing to compile. `tetrion.ts` is untouched.
+ */
+interface PlannedTetrion {
+  hardDrop(): void;
+  hold(): void;
+  heldTetromino: Tetromino | null;
+  ghostPosition: { x: number; y: number } | null;
+}
+
+function plannedTetrion(): DefaultTetrion & PlannedTetrion {
+  return freshTetrion() as unknown as DefaultTetrion & PlannedTetrion;
+}
+
+describe("hard drop", () => {
+  it("drops the piece to the landing row", () => {
+    const tetrion = plannedTetrion();
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    tetrion.hardDrop();
+
+    expect(filledColumns(tetrion, 18)).toEqual([5]);
+    expect(filledColumns(tetrion, 19)).toEqual([4, 5, 6]);
+  });
+
+  it("locks the piece immediately, without the lock delay", () => {
+    const tetrion = plannedTetrion();
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    tetrion.hardDrop();
+
+    expect(tetrion.currentTetromino).toBeNull();
+  });
+
+  it("awards two points per cell travelled", () => {
+    const tetrion = plannedTetrion();
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    tetrion.hardDrop(); // rows 2 to 18 is sixteen cells
+
+    expect(tetrion.score).toBe(32);
+  });
+});
+
+describe("hold", () => {
+  it("stashes the current piece and brings in the next", () => {
+    const tetrion = plannedTetrion();
+    const held = pieceNamed("T");
+    const next = pieceNamed("I");
+    place(tetrion, held, 0, { x: 4, y: 2 });
+    tetrion.nextTetromino = next;
+
+    tetrion.hold();
+
+    expect(tetrion.heldTetromino).toBe(held);
+    expect(tetrion.currentTetromino).toBe(next);
+  });
+
+  it("swaps the held and current pieces on a later hold", () => {
+    const tetrion = plannedTetrion();
+    const first = pieceNamed("T");
+    place(tetrion, first, 0, { x: 4, y: 2 });
+    tetrion.nextTetromino = pieceNamed("I");
+
+    tetrion.hold();
+    tetrion.spawnTetromino(); // a new piece clears the once-per-piece lock
+    const second = tetrion.currentTetromino;
+
+    tetrion.hold();
+
+    expect(tetrion.heldTetromino).toBe(second);
+    expect(tetrion.currentTetromino).toBe(first);
+  });
+
+  it("refuses a second hold for the same piece", () => {
+    const tetrion = plannedTetrion();
+    const held = pieceNamed("T");
+    const next = pieceNamed("I");
+    place(tetrion, held, 0, { x: 4, y: 2 });
+    tetrion.nextTetromino = next;
+
+    tetrion.hold();
+    tetrion.hold();
+
+    expect(tetrion.heldTetromino).toBe(held);
+    expect(tetrion.currentTetromino).toBe(next);
+  });
+
+  it("returns a held piece at its spawn rotation", () => {
+    const tetrion = plannedTetrion();
+    const held = pieceNamed("T");
+    place(tetrion, held, 1, { x: 4, y: 5 });
+    tetrion.nextTetromino = pieceNamed("I");
+
+    tetrion.hold();
+    tetrion.spawnTetromino();
+    tetrion.hold();
+
+    expect(tetrion.currentTetromino).toBe(held);
+    expect(tetrion.currentTetrominoRotation).toBe(0);
+  });
+});
+
+describe("ghost piece", () => {
+  it("sits at the row the piece would land on", () => {
+    const tetrion = plannedTetrion();
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    expect(tetrion.ghostPosition).toEqual({ x: 4, y: 18 });
+  });
+
+  it("follows the piece sideways", () => {
+    const tetrion = plannedTetrion();
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    tetrion.moveTetrominoLeft();
+
+    expect(tetrion.ghostPosition).toEqual({ x: 3, y: 18 });
+  });
+
+  it("agrees with where a hard drop lands", () => {
+    const tetrion = plannedTetrion();
+    block(tetrion, [
+      [19, 4],
+      [19, 5],
+      [19, 6],
+    ]);
+    place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
+
+    expect(tetrion.ghostPosition).toEqual({ x: 4, y: 17 });
+
+    tetrion.hardDrop();
+
+    expect(filledColumns(tetrion, 17)).toEqual([5]);
+    expect(filledColumns(tetrion, 18)).toEqual([4, 5, 6]);
+  });
+});
+
+/**
+ * Spawn placement — https://tetris.wiki/Super_Rotation_System
+ *
+ * Not implemented: every piece spawns at x: 4, one column right of the guideline,
+ * and at y: 0, inside the visible field rather than in the buffer above it.
+ */
+describe("spawn placement", () => {
+  /** Spawns one named piece and reports the columns it covers. */
+  function spawnColumns(name: string): number[] {
+    const tetrion = freshTetrion();
+    const piece = pieceNamed(name);
+    tetrion.nextTetromino = piece;
+    tetrion.spawnTetromino();
+
+    const { x } = tetrion.currentTetrominoPosition!;
+    const shape = piece.rotations[tetrion.currentTetrominoRotation];
+    const columns = new Set<number>();
+    shape.forEach((row) =>
+      row.forEach((filled, column) => {
+        if (filled) {
+          columns.add(x + column);
+        }
+      }),
+    );
+    return [...columns].sort((a, b) => a - b);
+  }
+
+  it("spawns the three-wide pieces over the middle columns", () => {
+    for (const name of ["J", "L", "S", "T", "Z"]) {
+      expect(spawnColumns(name)).toEqual([3, 4, 5]);
+    }
+  });
+
+  it("spawns I across the four middle columns", () => {
+    expect(spawnColumns("I")).toEqual([3, 4, 5, 6]);
+  });
+
+  it("spawns O over the two middle columns", () => {
+    expect(spawnColumns("O")).toEqual([4, 5]);
+  });
+
+  it("spawns pieces above the visible field", () => {
+    const tetrion = freshTetrion();
+    const piece = pieceNamed("T");
+    tetrion.nextTetromino = piece;
+    tetrion.spawnTetromino();
+
+    const { y } = tetrion.currentTetrominoPosition!;
+    const shape = piece.rotations[tetrion.currentTetrominoRotation];
+    const lowestFilledRow = Math.max(
+      ...shape.flatMap((row, index) => (row.some((cell) => cell) ? [index] : [])),
+    );
+
+    expect(y + lowestFilledRow).toBeLessThan(0);
   });
 });
