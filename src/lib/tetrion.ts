@@ -328,6 +328,10 @@ export class DefaultTetrion implements ITetrion {
   tick(dt: number) {
     this._updateLevelAndGravity();
 
+    if (!this.currentTetromino) {
+      this.spawnTetromino();
+    }
+
     this._totalTime += dt * this._gravityMultiplier;
     this._frameTime += dt * this._gravityMultiplier;
     while (this._frameTime >= this._nextFrameTime) {
@@ -446,6 +450,7 @@ export class DefaultTetrion implements ITetrion {
     this._clearFullRows();
     this._removeEmptyRows();
     this._updateLevelAndGravity();
+    this._nextFrameTime = 0; // The next tick should spawn a tetronimo
   }
 
   _testTetronimoUpdate(
@@ -482,11 +487,6 @@ export class DefaultTetrion implements ITetrion {
     // Move the current tetromino down by one row
     if (this.currentTetromino && this.currentTetrominoPosition) {
       this.moveTetrominoDown();
-
-      // Here you would typically check for collisions and lock the tetromino if it can't move down
-    } else {
-      // If there's no current tetromino, spawn a new one
-      this.spawnTetromino();
     }
   }
 

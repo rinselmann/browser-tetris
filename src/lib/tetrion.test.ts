@@ -676,7 +676,8 @@ describe("gravity and tick", () => {
     place(tetrion, pieceNamed("T"), 0, { x: 4, y: 18 });
     tetrion.nextTetromino = pieceNamed("I");
 
-    tetrion.tick(0.2);
+    tetrion.moveTetrominoDown();
+    tetrion.tick(0.5);
     expect(tetrion.currentTetromino).toBeNull();
 
     tetrion.tick(0.2);
