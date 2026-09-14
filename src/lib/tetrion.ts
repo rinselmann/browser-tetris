@@ -274,6 +274,8 @@ export function copyPlayfield(src: Playfield, dst: Playfield) {
 
 export interface TetrionConfig {
   level?: number;
+  moveLockMaxResets?: number;
+  maxLockTime: number;
 }
 
 export class DefaultTetrion implements ITetrion {
@@ -288,7 +290,10 @@ export class DefaultTetrion implements ITetrion {
   _collisionPlayfield: Playfield;
   _gravityMultiplier: number;
   _lockTime: number;
+  _maxLockTime: number;
   _lineScoringTable: number[];
+  _moveLockResetBudget: number;
+  _moveLockMaxResets: number;
 
   currentTetromino: TetrominoDefinition | null;
   currentTetrominoPosition: { x: number; y: number } | null;
@@ -300,6 +305,8 @@ export class DefaultTetrion implements ITetrion {
   isGameOver: boolean;
 
   constructor(config?: TetrionConfig) {
+    const { level = 1, moveLockMaxResets = 15, maxLockTime = 0.5 } = config || {};
+
     this._tetrominoes = createDefaultTetrominoes();
     this._bag = createDefaultBag(this._tetrominoes);
     this._frameCounter = 0;
@@ -308,7 +315,10 @@ export class DefaultTetrion implements ITetrion {
     this._totalTime = 0;
     this._gravityMultiplier = 1.0;
     this._lockTime = 0;
+    this._maxLockTime = Math.max(0, maxLockTime);
     this._lineScoringTable = [0, 100, 300, 500, 800];
+    this._moveLockResetBudget = 0;
+    this._moveLockMaxResets = moveLockMaxResets;
 
     this.playfield = createEmptyPlayfield(20, 10);
     this._collisionPlayfield = createEmptyPlayfield(20, 10);
@@ -317,7 +327,7 @@ export class DefaultTetrion implements ITetrion {
     this.currentTetrominoRotation = 0;
     this.nextTetromino = null;
     this.score = 0;
-    this.level = Math.max(config?.level || 1, 1);
+    this.level = Math.max(level || 1, 1);
     this.linesCleared = 0;
     this.isGameOver = false;
 
@@ -348,6 +358,12 @@ export class DefaultTetrion implements ITetrion {
       return;
     }
 
+    if (this._lockTime > 0 && this._moveLockResetBudget <= 0) {
+      return;
+    }
+
+    let moved = false;
+
     const wallkicks = this.currentTetromino?.wallkicks[
       (this.currentTetrominoRotation * 2 + 7) % 8
     ] || [{ x: 0, y: 0 }];
@@ -356,14 +372,18 @@ export class DefaultTetrion implements ITetrion {
         x: this.currentTetrominoPosition.x + wallkick.x,
         y: this.currentTetrominoPosition.y + wallkick.y,
       };
-      const updated = this._updateCurrentTetronimo(
+      moved = this._updateCurrentTetronimo(
         this.currentTetromino,
         (this.currentTetrominoRotation + 3) % 4,
         position,
       );
-      if (updated) {
+      if (moved) {
         break;
       }
+    }
+
+    if (this._lockTime && moved) {
+      this._restartLockDelay();
     }
   }
 
@@ -371,6 +391,12 @@ export class DefaultTetrion implements ITetrion {
     if (!this.currentTetromino || !this.currentTetrominoPosition) {
       return;
     }
+
+    if (this._lockTime > 0 && this._moveLockResetBudget <= 0) {
+      return;
+    }
+
+    let moved = false;
 
     const wallkicks = this.currentTetromino?.wallkicks[this.currentTetrominoRotation * 2] || [
       { x: 0, y: 0 },
@@ -380,56 +406,100 @@ export class DefaultTetrion implements ITetrion {
         x: this.currentTetrominoPosition.x + wallkick.x,
         y: this.currentTetrominoPosition.y + wallkick.y,
       };
-      const updated = this._updateCurrentTetronimo(
+      moved = this._updateCurrentTetronimo(
         this.currentTetromino,
         (this.currentTetrominoRotation + 1) % 4,
         position,
       );
 
-      if (updated) {
+      if (moved) {
         break;
       }
+    }
+
+    if (this._lockTime && moved) {
+      this._restartLockDelay();
     }
   }
 
   moveTetrominoLeft() {
-    if (this.currentTetrominoPosition) {
-      this._updateCurrentTetronimo(this.currentTetromino, this.currentTetrominoRotation, {
+    if (!this.currentTetromino || !this.currentTetrominoPosition) {
+      return;
+    }
+
+    if (this._lockTime > 0 && this._moveLockResetBudget <= 0) {
+      return;
+    }
+
+    const moved = this._updateCurrentTetronimo(
+      this.currentTetromino,
+      this.currentTetrominoRotation,
+      {
         ...this.currentTetrominoPosition,
         x: this.currentTetrominoPosition.x - 1,
-      });
+      },
+    );
+
+    if (this._lockTime && moved) {
+      this._restartLockDelay();
     }
   }
 
   moveTetrominoRight() {
-    if (this.currentTetrominoPosition) {
-      this._updateCurrentTetronimo(this.currentTetromino, this.currentTetrominoRotation, {
+    if (!this.currentTetromino || !this.currentTetrominoPosition) {
+      return;
+    }
+
+    if (this._lockTime > 0 && this._moveLockResetBudget <= 0) {
+      return;
+    }
+
+    const moved = this._updateCurrentTetronimo(
+      this.currentTetromino,
+      this.currentTetrominoRotation,
+      {
         ...this.currentTetrominoPosition,
         x: this.currentTetrominoPosition.x + 1,
-      });
+      },
+    );
+
+    if (this._lockTime && moved) {
+      this._restartLockDelay();
     }
   }
 
   moveTetrominoDown(): void {
-    if (this.currentTetrominoPosition) {
-      const moved = this._updateCurrentTetronimo(
-        this.currentTetromino,
-        this.currentTetrominoRotation,
-        {
-          ...this.currentTetrominoPosition,
-          y: this.currentTetrominoPosition.y + 1,
-        },
-      );
+    if (!this.currentTetromino || !this.currentTetrominoPosition) {
+      return;
+    }
 
-      if (moved) {
-        this._lockTime = 0;
-        if (this._gravityMultiplier > 1) {
-          // 1 pt per row when soft drop is activated
-          this.score += 1;
-        }
-      } else if (!this._lockTime) {
-        this._lockTime = this._totalTime + 0.5;
+    const moved = this._updateCurrentTetronimo(
+      this.currentTetromino,
+      this.currentTetrominoRotation,
+      {
+        ...this.currentTetrominoPosition,
+        y: this.currentTetrominoPosition.y + 1,
+      },
+    );
+
+    if (moved) {
+      this._lockTime = 0;
+      if (this._gravityMultiplier > 1) {
+        // 1 pt per row when soft drop is activated
+        this.score += 1;
       }
+    } else if (!this._lockTime) {
+      this._restartLockDelay(true);
+    }
+  }
+
+  _restartLockDelay(resetLockResetBudget?: boolean) {
+    this._lockTime = this._totalTime + this._maxLockTime;
+
+    if (resetLockResetBudget) {
+      this._moveLockResetBudget = this._moveLockMaxResets;
+    } else {
+      this._moveLockResetBudget--;
     }
   }
 
