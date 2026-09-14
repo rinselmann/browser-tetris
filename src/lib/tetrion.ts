@@ -1,4 +1,4 @@
-import { shuffle } from "lodash";
+import { every, fill, isNil, shuffle, some } from "lodash";
 
 interface TetrominoDefinition {
   name: string;
@@ -7,8 +7,10 @@ interface TetrominoDefinition {
   wallkicks: { x: number; y: number }[][];
 }
 
+export type Playfield = (TetrominoDefinition | null)[][];
+
 export interface ITetrion {
-  playfield: (TetrominoDefinition | null)[][];
+  playfield: Playfield;
   spawnTetromino(): void;
   rotateTetrominoLeft(): void;
   rotateTetrominoRight(): void;
@@ -18,9 +20,13 @@ export interface ITetrion {
   activateSoftDrop(): void;
   deactivateSoftDrop(): void;
   tick(dt: number): void;
+  score: number;
+  level: number;
+  linesCleared: number;
+  isGameOver: boolean;
 }
 
-export function createEmptyPlayfield(rows: number, cols: number): (TetrominoDefinition | null)[][] {
+export function createEmptyPlayfield(rows: number, cols: number): Playfield {
   return Array.from({ length: rows }, () => Array(cols).fill(null));
 }
 
@@ -258,8 +264,16 @@ export function createDefaultBag(tetrominoes: TetrominoDefinition[]): TetrominoD
   return shuffle(tetrominoes);
 }
 
+export function copyPlayfield(src: Playfield, dst: Playfield) {
+  for (let row = 0; row < src.length; row++) {
+    for (let col = 0; col < src[row].length; col++) {
+      dst[row][col] = src[row][col];
+    }
+  }
+}
+
 export class DefaultTetrion implements ITetrion {
-  playfield: (TetrominoDefinition | null)[][];
+  playfield: Playfield;
 
   _tetrominoes: TetrominoDefinition[];
   _bag: TetrominoDefinition[];
@@ -267,7 +281,7 @@ export class DefaultTetrion implements ITetrion {
   _frameTime: number;
   _nextFrameTime: number;
   _totalTime: number;
-  _collisionPlayfield: (TetrominoDefinition | null)[][];
+  _collisionPlayfield: Playfield;
   _gravityMultiplier: number;
 
   currentTetromino: TetrominoDefinition | null;
@@ -284,7 +298,7 @@ export class DefaultTetrion implements ITetrion {
     this._bag = createDefaultBag(this._tetrominoes);
     this._frameCounter = 0;
     this._frameTime = 0;
-    this._nextFrameTime = 0.2; // 1 second per frame
+    this._nextFrameTime = 0;
     this._totalTime = 0;
     this._gravityMultiplier = 1.0;
 
@@ -299,6 +313,7 @@ export class DefaultTetrion implements ITetrion {
     this.linesCleared = 0;
     this.isGameOver = false;
 
+    this._updateLevelAndGravity();
     this.spawnTetromino();
   }
 
@@ -395,7 +410,7 @@ export class DefaultTetrion implements ITetrion {
   }
 
   activateSoftDrop() {
-    this._gravityMultiplier = 0.25;
+    this._gravityMultiplier = 0.05; // 20x
   }
 
   deactivateSoftDrop() {
@@ -406,11 +421,10 @@ export class DefaultTetrion implements ITetrion {
     this.currentTetromino = null;
     this.currentTetrominoPosition = null;
     this.currentTetrominoRotation = 0;
-    for (let row = 0; row < this.playfield.length; row++) {
-      for (let col = 0; col < this.playfield[row].length; col++) {
-        this._collisionPlayfield[row][col] = this.playfield[row][col];
-      }
-    }
+    copyPlayfield(this.playfield, this._collisionPlayfield);
+    this._clearFullRows();
+    this._removeEmptyRows();
+    this._updateLevelAndGravity();
   }
 
   _testTetronimoUpdate(
@@ -453,6 +467,12 @@ export class DefaultTetrion implements ITetrion {
       // If there's no current tetromino, spawn a new one
       this.spawnTetromino();
     }
+  }
+
+  _updateLevelAndGravity() {
+    // Calculate level frame time based on a fixed-goal system from https://tetris.wiki/Marathon
+    this.level = Math.min(Math.max(this.level, Math.floor(this.linesCleared / 10) + 1), 20);
+    this._nextFrameTime = (0.8 - (this.level - 1) * 0.007) ** (this.level - 1); // 
   }
 
   _resetBag() {
@@ -544,6 +564,40 @@ export class DefaultTetrion implements ITetrion {
         }
       }
     }
+  }
+
+  _clearFullRows() {
+    const playfield = this._collisionPlayfield;
+    for (let row = 0; row < playfield.length; row++) {
+      if (every(playfield[row])) {
+        this.linesCleared++;
+        fill(playfield[row], null);
+      }
+    }
+
+    copyPlayfield(playfield, this.playfield);
+    this._placeCurrentTetronimoOnPlayfield();
+  }
+
+  _removeEmptyRows() {
+    const playfield = this._collisionPlayfield;
+    for (let row = playfield.length - 1; row >= 0; row--) {
+      if (every(playfield[row], isNil)) {
+        // Find the next non empty row and move it's contents to the current row
+        for (let srcRow = row - 1; srcRow >= 0; srcRow--) {
+          if (some(playfield[srcRow])) {
+            for (let col = 0; col < playfield[srcRow].length; col++) {
+              playfield[row][col] = playfield[srcRow][col];
+              playfield[srcRow][col] = null;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    copyPlayfield(playfield, this.playfield);
+    this._placeCurrentTetronimoOnPlayfield();
   }
 
   spawnTetromino() {

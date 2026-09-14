@@ -1,8 +1,9 @@
-import { RefObject, useMemo, useRef } from "react";
+import { RefObject, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { ITetrion, DefaultTetrion } from "../lib/tetrion";
+import { DefaultTetrion, ITetrion } from "../lib/tetrion";
 import { Group, Mesh } from "three";
-import { KeyboardControls, KeyboardControlsEntry, useKeyboardControls } from "@react-three/drei";
+import { useInputControls } from "./InputControls";
+import { useGameUI } from "./GameUIContext";
 
 export function TetrionGrid() {
   return (
@@ -20,9 +21,10 @@ interface TetrionBlocksProps {
 }
 
 export function TetrionBlocks({ rows = 20, columns = 10, tetrionRef }: TetrionBlocksProps) {
-  const [, get] = useKeyboardControls<Controls>();
+  const [, get] = useInputControls();
   const blocksRef = useRef<Group>(null!);
   const inputStateRef = useRef(get());
+  const { score, lines, level, setScore, setLines, setLevel } = useGameUI();
 
   useFrame(() => {
     const tetrion = tetrionRef.current;
@@ -64,6 +66,19 @@ export function TetrionBlocks({ rows = 20, columns = 10, tetrionRef }: TetrionBl
     }
 
     inputStateRef.current = controls;
+
+    // Update score in the hud
+    if (score !== tetrion.score) {
+      setScore(tetrion.score);
+    }
+
+    if (level !== tetrion.level) {
+      setLevel(tetrion.level);
+    }
+
+    if (lines !== tetrion.linesCleared) {
+      setLines(tetrion.linesCleared);
+    }
   });
 
   // Render a grid of blocks with changeable colors based on the playfield dimensions
@@ -81,14 +96,6 @@ export function TetrionBlocks({ rows = 20, columns = 10, tetrionRef }: TetrionBl
   );
 }
 
-enum Controls {
-  moveLeft = "moveLeft",
-  moveRight = "moveRight",
-  rotateLeft = "rotateLeft",
-  rotateRight = "rotateRight",
-  softDrop = "softDrop",
-}
-
 export function Tetrion() {
   const tetrionRef = useRef<ITetrion | null>(null);
 
@@ -100,23 +107,10 @@ export function Tetrion() {
     tetrionRef.current?.tick(delta);
   });
 
-  const inputMap = useMemo<KeyboardControlsEntry<Controls>[]>(
-    () => [
-      { name: Controls.moveLeft, keys: ["ArrowLeft", "A"] },
-      { name: Controls.moveRight, keys: ["ArrowRight", "D"] },
-      { name: Controls.rotateLeft, keys: ["ArrowUp", "W"] },
-      { name: Controls.rotateRight, keys: ["ArrowDown", "S"] },
-      { name: Controls.softDrop, keys: ["Space"] },
-    ],
-    [],
-  );
-
   return (
-    <KeyboardControls map={inputMap}>
-      <group>
-        <TetrionGrid />
-        <TetrionBlocks tetrionRef={tetrionRef} />
-      </group>
-    </KeyboardControls>
+    <group>
+      <TetrionGrid />
+      <TetrionBlocks tetrionRef={tetrionRef} />
+    </group>
   );
 }
