@@ -318,9 +318,9 @@ export class DefaultTetrion implements ITetrion {
   }
 
   tick(dt: number) {
-    this._totalTime += dt;
-    this._frameTime += dt;
-    while (this._frameTime >= this._nextFrameTime * this._gravityMultiplier) {
+    this._totalTime += dt * this._gravityMultiplier;
+    this._frameTime += dt * this._gravityMultiplier;
+    while (this._frameTime >= this._nextFrameTime) {
       this._advanceFrame();
     }
   }
@@ -410,7 +410,7 @@ export class DefaultTetrion implements ITetrion {
   }
 
   activateSoftDrop() {
-    this._gravityMultiplier = 0.05; // 20x
+    this._gravityMultiplier = 20.0;
   }
 
   deactivateSoftDrop() {
@@ -456,7 +456,7 @@ export class DefaultTetrion implements ITetrion {
 
   _advanceFrame() {
     this._frameCounter++;
-    this._frameTime -= this._nextFrameTime * this._gravityMultiplier;
+    this._frameTime -= this._nextFrameTime;
 
     // Move the current tetromino down by one row
     if (this.currentTetromino && this.currentTetrominoPosition) {
