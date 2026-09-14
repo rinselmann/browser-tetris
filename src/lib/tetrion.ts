@@ -283,6 +283,7 @@ export class DefaultTetrion implements ITetrion {
   _totalTime: number;
   _collisionPlayfield: Playfield;
   _gravityMultiplier: number;
+  _lockTime: number;
 
   currentTetromino: TetrominoDefinition | null;
   currentTetrominoPosition: { x: number; y: number } | null;
@@ -301,6 +302,7 @@ export class DefaultTetrion implements ITetrion {
     this._nextFrameTime = 0;
     this._totalTime = 0;
     this._gravityMultiplier = 1.0;
+    this._lockTime = 0;
 
     this.playfield = createEmptyPlayfield(20, 10);
     this._collisionPlayfield = createEmptyPlayfield(20, 10);
@@ -322,6 +324,10 @@ export class DefaultTetrion implements ITetrion {
     this._frameTime += dt * this._gravityMultiplier;
     while (this._frameTime >= this._nextFrameTime) {
       this._advanceFrame();
+    }
+
+    if (this.currentTetromino && this._lockTime && this._totalTime >= this._lockTime) {
+      this._lockCurrentTetronimo();
     }
   }
 
@@ -403,8 +409,10 @@ export class DefaultTetrion implements ITetrion {
         },
       );
 
-      if (!moved) {
-        this._lockCurrentTetronimo();
+      if (moved) {
+        this._lockTime = 0;
+      } else if (!this._lockTime) {
+        this._lockTime = this._totalTime + 0.5;
       }
     }
   }
@@ -418,6 +426,7 @@ export class DefaultTetrion implements ITetrion {
   }
 
   _lockCurrentTetronimo() {
+    this._lockTime = 0;
     this.currentTetromino = null;
     this.currentTetrominoPosition = null;
     this.currentTetrominoRotation = 0;

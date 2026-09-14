@@ -579,6 +579,10 @@ describe("movement and collision", () => {
 
     tetrion.moveTetrominoDown();
     expect(tetrion.currentTetromino).not.toBeNull();
+    expect(tetrion._collisionPlayfield[18][5]).toBeNull();
+    expect(tetrion._collisionPlayfield[19][4]).toBeNull();
+    expect(tetrion._collisionPlayfield[19][5]).toBeNull();
+    expect(tetrion._collisionPlayfield[19][6]).toBeNull();
 
     tetrion.tick(LOCK_DELAY + 0.1);
 
