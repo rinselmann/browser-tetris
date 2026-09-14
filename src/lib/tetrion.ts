@@ -443,7 +443,7 @@ export class DefaultTetrion implements ITetrion {
           const isOutOfBounds =
             playfieldRow >= playfield.length ||
             playfieldCol < 0 ||
-            playfieldCol >= playfield[playfieldRow].length;
+            playfieldCol >= playfield[playfieldRow]?.length;
           if (isOutOfBounds || (playfieldRow >= 0 && playfield[playfieldRow][playfieldCol])) {
             return false;
           }
@@ -472,7 +472,7 @@ export class DefaultTetrion implements ITetrion {
   _updateLevelAndGravity() {
     // Calculate level frame time based on a fixed-goal system from https://tetris.wiki/Marathon
     this.level = Math.min(Math.max(this.level, Math.floor(this.linesCleared / 10) + 1), 20);
-    this._nextFrameTime = (0.8 - (this.level - 1) * 0.007) ** (this.level - 1); // 
+    this._nextFrameTime = (0.8 - (this.level - 1) * 0.007) ** (this.level - 1); //
   }
 
   _resetBag() {
@@ -611,7 +611,7 @@ export class DefaultTetrion implements ITetrion {
 
     const tetronimo = this.nextTetromino;
     const rotation = 0;
-    const position = { x: 4, y: 0 };
+    const position = { x: 3, y: -2 };
     if (!this._testTetronimoUpdate(tetronimo, rotation, position)) {
       this.isGameOver = true;
       console.log("Game Over");
