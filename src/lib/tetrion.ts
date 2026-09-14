@@ -638,7 +638,7 @@ export class DefaultTetrion implements ITetrion {
 
     const tetronimo = this.nextTetromino;
     const rotation = 0;
-    const position = { x: 3, y: -2 };
+    const position = { x: 3, y: -1 };
     if (!this._testTetronimoUpdate(tetronimo, rotation, position)) {
       this.isGameOver = true;
       console.log("Game Over");
