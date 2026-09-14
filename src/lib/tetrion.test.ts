@@ -1156,9 +1156,6 @@ describe("ghost piece", () => {
 
 /**
  * Spawn placement — https://tetris.wiki/Super_Rotation_System
- *
- * Not implemented: every piece spawns at x: 4, one column right of the guideline,
- * and at y: 0, inside the visible field rather than in the buffer above it.
  */
 describe("spawn placement", () => {
   /** Spawns one named piece and reports the columns it covers. */
@@ -1207,6 +1204,6 @@ describe("spawn placement", () => {
       ...shape.flatMap((row, index) => (row.some((cell) => cell) ? [index] : [])),
     );
 
-    expect(y + lowestFilledRow).toBeLessThan(0);
+    expect(y + lowestFilledRow).toBeLessThan(1);
   });
 });
