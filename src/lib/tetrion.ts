@@ -272,6 +272,10 @@ export function copyPlayfield(src: Playfield, dst: Playfield) {
   }
 }
 
+export interface TetrionConfig {
+  level?: number;
+}
+
 export class DefaultTetrion implements ITetrion {
   playfield: Playfield;
 
@@ -294,7 +298,7 @@ export class DefaultTetrion implements ITetrion {
   linesCleared: number;
   isGameOver: boolean;
 
-  constructor() {
+  constructor(config?: TetrionConfig) {
     this._tetrominoes = createDefaultTetrominoes();
     this._bag = createDefaultBag(this._tetrominoes);
     this._frameCounter = 0;
@@ -311,7 +315,7 @@ export class DefaultTetrion implements ITetrion {
     this.currentTetrominoRotation = 0;
     this.nextTetromino = null;
     this.score = 0;
-    this.level = 1;
+    this.level = Math.max(config?.level || 1, 1);
     this.linesCleared = 0;
     this.isGameOver = false;
 
@@ -320,6 +324,8 @@ export class DefaultTetrion implements ITetrion {
   }
 
   tick(dt: number) {
+    this._updateLevelAndGravity();
+
     this._totalTime += dt * this._gravityMultiplier;
     this._frameTime += dt * this._gravityMultiplier;
     while (this._frameTime >= this._nextFrameTime) {

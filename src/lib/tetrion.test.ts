@@ -1,5 +1,6 @@
 import {
   DefaultTetrion,
+  TetrionConfig,
   createDefaultBag,
   createDefaultTetrominoes,
   createEmptyPlayfield,
@@ -37,8 +38,8 @@ function shapeOf(piece: Tetromino, rotation: number): string[] {
 }
 
 /** A tetrion with both playfields wiped and no piece in play, for deterministic setups. */
-function freshTetrion(): DefaultTetrion {
-  const tetrion = new DefaultTetrion();
+function freshTetrion(config?: TetrionConfig): DefaultTetrion {
+  const tetrion = new DefaultTetrion(config);
   tetrion.playfield = createEmptyPlayfield(ROWS, COLS);
   tetrion._collisionPlayfield = createEmptyPlayfield(ROWS, COLS);
   tetrion.currentTetromino = null;
@@ -639,8 +640,7 @@ describe("gravity and tick", () => {
    * separates them. Level 10 gravity is ~0.0642s, so soft drop is ~0.0032s.
    */
   it("drops at twenty times the level's gravity while soft drop is held", () => {
-    const tetrion = freshTetrion();
-    tetrion.level = 10;
+    const tetrion = freshTetrion({ level: 10 });
     place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
 
     tetrion.activateSoftDrop();
@@ -864,8 +864,7 @@ describe("scoring and levels", () => {
   });
 
   it("multiplies the clear value by the current level", () => {
-    const tetrion = freshTetrion();
-    tetrion.level = 3;
+    const tetrion = freshTetrion({ level: 3 });
 
     clearLines(tetrion, 1);
 
@@ -903,8 +902,7 @@ describe("scoring and levels", () => {
 
   // Guideline gravity: (0.8 - (level - 1) * 0.007) ^ (level - 1) seconds per row.
   it("falls one row per second at level one", () => {
-    const tetrion = freshTetrion();
-    tetrion.level = 1;
+    const tetrion = freshTetrion({ level: 1 });
     place(tetrion, pieceNamed("T"), 0, { x: 4, y: 2 });
 
     tetrion.tick(0.9);
