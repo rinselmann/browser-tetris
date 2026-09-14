@@ -419,6 +419,10 @@ export class DefaultTetrion implements ITetrion {
 
       if (moved) {
         this._lockTime = 0;
+        if (this._gravityMultiplier > 1) {
+          // 1 pt per row when soft drop is activated
+          this.score += 1;
+        }
       } else if (!this._lockTime) {
         this._lockTime = this._totalTime + 0.5;
       }
