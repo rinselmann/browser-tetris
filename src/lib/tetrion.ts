@@ -288,6 +288,7 @@ export class DefaultTetrion implements ITetrion {
   _collisionPlayfield: Playfield;
   _gravityMultiplier: number;
   _lockTime: number;
+  _lineScoringTable: number[];
 
   currentTetromino: TetrominoDefinition | null;
   currentTetrominoPosition: { x: number; y: number } | null;
@@ -307,6 +308,7 @@ export class DefaultTetrion implements ITetrion {
     this._totalTime = 0;
     this._gravityMultiplier = 1.0;
     this._lockTime = 0;
+    this._lineScoringTable = [0, 100, 300, 500, 800];
 
     this.playfield = createEmptyPlayfield(20, 10);
     this._collisionPlayfield = createEmptyPlayfield(20, 10);
@@ -582,6 +584,7 @@ export class DefaultTetrion implements ITetrion {
   }
 
   _clearFullRows() {
+    const previousLinesCleared = this.linesCleared;
     const playfield = this._collisionPlayfield;
     for (let row = 0; row < playfield.length; row++) {
       if (every(playfield[row])) {
@@ -590,8 +593,13 @@ export class DefaultTetrion implements ITetrion {
       }
     }
 
+    this._scoreLinesCleared(this.linesCleared - previousLinesCleared);
     copyPlayfield(playfield, this.playfield);
     this._placeCurrentTetronimoOnPlayfield();
+  }
+
+  _scoreLinesCleared(count: number) {
+    this.score += (this._lineScoringTable[count] || 0) * this.level;
   }
 
   _removeEmptyRows() {
