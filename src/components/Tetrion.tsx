@@ -24,7 +24,8 @@ export function TetrionBlocks({ rows = 20, columns = 10, tetrionRef }: TetrionBl
   const [, get] = useInputControls();
   const blocksRef = useRef<Group>(null!);
   const inputStateRef = useRef(get());
-  const { score, lines, level, setScore, setLines, setLevel } = useGameUI();
+  const { score, lines, level, isGameOver, setScore, setLines, setLevel, setIsGameOver } =
+    useGameUI();
 
   useFrame(() => {
     const tetrion = tetrionRef.current;
@@ -78,6 +79,10 @@ export function TetrionBlocks({ rows = 20, columns = 10, tetrionRef }: TetrionBl
 
     if (lines !== tetrion.linesCleared) {
       setLines(tetrion.linesCleared);
+    }
+
+    if (isGameOver !== tetrion.isGameOver) {
+      setIsGameOver(tetrion.isGameOver);
     }
   });
 

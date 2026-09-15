@@ -336,6 +336,10 @@ export class DefaultTetrion implements ITetrion {
   }
 
   tick(dt: number) {
+    if (this.isGameOver) {
+      return;
+    }
+
     this._updateLevelAndGravity();
 
     if (!this.currentTetromino) {
