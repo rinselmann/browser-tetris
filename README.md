@@ -1,25 +1,6 @@
 # browser-tetris
 
-## Todo
-
-[x] initialize tetrion
-[ ] spawn tetronimo
-[x] tick tetrion
-[x] tetronimo falling
-[x] rotation/movement
-[ ] soft drop (20x)
-[x] handle wallkicks
-[ ] line clearing
-[ ] lock delay
-[ ] hard drop
-[ ] show next tetronimo
-[ ] implement hold tetronimo
-
-A bare [Next.js](https://nextjs.org) starting point for a browser Tetris clone. The playfield is
-rendered in WebGL via [React Three Fiber](https://r3f.docs.pmnd.rs/), not as DOM elements.
-
-**There is no game yet.** What's here is the app shell, a spinning placeholder cube proving the 3D
-pipeline works end to end, and the tooling the game will be built with: Vitest, ESLint, Prettier.
+A small browser based Tetris clone. The app consists of a Nextjs wrapper around a 3d game view rendered using React Three Fiber. 
 
 ## How to run
 
@@ -73,58 +54,29 @@ npm start
 
 ## Choices and tradeoffs
 
-**React Three Fiber instead of a DOM/CSS grid.** A Tetris board is a natural CSS grid, so 3D is a
-deliberate cost: WebGL buys depth, lighting and animation that DOM can't match, and pays for it in
-a heavier dependency tree and a render path that can't be asserted on in jsdom. `@react-three/drei`
-comes along for helpers like `OrbitControls`.
+**Next.js/React Three Fiber**. Next.js is used for the wrapper and build/dev 
+environment. The main gameplay area is rendered using React Three Fiber. Currently
+the graphics are full 3d, but very simple, with the idea that in the future,
+the pieces would be given more texture, and lighting, cinematic camera motion, 
+and fx could be used for things like line clearing, game intro/ending, etc.
 
-**React is pinned to exactly 19.2.8.** `@react-three/fiber@9.7.0` declares a peer range of
-`react >=19 <19.3`, and React 19.3.0 is already released — so an unpinned install resolves to a
-version R3F rejects. `@types/react` is held at `~19.2.x` to match the runtime. Revisit this when
-R3F 10 ships (it's alpha at time of writing); until then, treat React upgrades as blocked.
+**Focus on Gameplay**. This app focuses on the primary gameplay of Tetris, over 
+providing a more "full" game experience in order to limit the scope for time.
 
-**`three` is pinned to 0.185.1** because `three` ships no bundled types and `@types/three` lags one
-minor behind the current release. Keeping the two in lockstep avoids type errors on newer `three`
-APIs. Bump both together.
-
-**[Gameplay of Tetris](https://tetris.wiki/Gameplay_of_Tetris) is the gameplay spec.** Board
-dimensions, the seven tetrominoes, gravity and lock delay, the 7-bag randomiser, hold, the ghost
-piece, line-clear and T-spin scoring, and level progression all follow that page rather than any
-one particular version of the game. Where it describes several historical behaviours, take the
-modern guideline one. `src/lib/tetrion.ts` implements part of it — gravity, movement, locking and
-the bag — and `src/lib/tetrion.test.ts` checks that part against the page. The rest is listed under
-"What's incomplete".
+**Gameplay based on [Gameplay of Tetris](https://tetris.wiki/Gameplay_of_Tetris) and 
+[Tetris Guideline](https://tetris.wiki/Tetris_Guideline).** The majority of the
+time on this demo was spent polishing gameplay so that it was smooth and also followed
+standard Tetris guidelines. The tradeoff is that other game features are missing
+from this demo, such as high score list, game dashboard, sound, etc.
 
 **Rotation follows the [Super Rotation System](https://tetris.wiki/Super_Rotation_System) (SRS).**
 That's the modern-guideline standard: fixed spawn orientations, rotation about the piece's centre,
 and the five-candidate wall-kick tables (with the separate table for I) that make T-spins and
-kick-outs behave the way players expect. `src/lib/tetrion.ts` implements it, and
-`src/lib/tetrion.test.ts` asserts against the tables on that page rather than against the code's
-own behaviour — which is how three transcription bugs were caught. See "Spec conformance".
-
-**Vitest over Jest,** for native TS/ESM handling, near-zero config, and a fast watch loop — which
-matters because the game logic is where the tests will live.
+kick-outs behave the way players expect.
 
 **Tests are logic-only, on purpose.** Vitest runs in the `node` environment and its `include` glob
-only matches `.ts`, not `.tsx`. Tetris rules — rotation, wall kicks, collision, line clears — are
-pure functions over plain data, and that's where unit tests earn their cost. Component tests were
-explicitly deferred, which also sidesteps the fact that jsdom has no WebGL context, so a `<Canvas>`
-can't be mounted in a DOM test anyway. See "Next steps" for how to add them later.
-
-**Tailwind v4** uses CSS-first configuration — there's no `tailwind.config.ts`; theme tokens live in
-the `@theme` block in `src/app/globals.css`. Prettier's Tailwind plugin is pointed at that
-stylesheet via `tailwindStylesheet` so it can still sort class names.
-
-**No `next/font`.** The Geist fonts that `create-next-app` wires up need mocking under Vitest and
-fetch at build time. A system font stack avoids both for no real loss on a game UI.
-
-**ESLint is held at 9.x, not 10.** ESLint 10 is out and npm will warn that 9.x is end-of-life,
-but `eslint-config-next@16.3.4` bundles an `eslint-plugin-react` that crashes on ESLint 10
-(`contextOrFilename.getFilename is not a function`). Upgrading is blocked until Next ships a
-compatible config; the deprecation warning on `npm install` is expected.
-
-**ESLint owns correctness, Prettier owns formatting.** `eslint-config-prettier` is applied last in
-`eslint.config.mjs` to switch off every stylistic rule that would otherwise fight Prettier.
+only matches `.ts`, not `.tsx`. Game state and Tetris rules — rotation, wall kicks, collision, line 
+clears — are tested thoroughly, but UI components are not currently tested just to limit the scope.
 
 ## Spec conformance
 
@@ -143,6 +95,21 @@ spawn. The tests that caught them are still in place.
 
 **Still red on purpose.** Around 42 tests fail because the feature they describe does not exist
 yet, not because anything is wrong. They are listed below and they go green as each feature lands.
+
+## Todo
+
+[x] initialize tetrion
+[x] spawn tetronimo
+[x] tick tetrion
+[x] tetronimo falling
+[x] rotation/movement
+[x] soft drop (20x)
+[x] handle wallkicks
+[x] line clearing
+[x] lock delay
+[ ] hard drop
+[ ] show next tetronimo
+[ ] implement hold tetronimo
 
 ## What's incomplete
 
