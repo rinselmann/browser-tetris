@@ -29,10 +29,6 @@ function ResponsiveBoardCamera() {
   return null;
 }
 
-/**
- * Scaffold scene. This exists to prove the WebGL pipeline works end to end;
- * the real game will replace the placeholder block with the playfield.
- */
 export default function GameCanvas() {
   return (
     <Canvas className="bg-board-bg">

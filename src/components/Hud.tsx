@@ -2,9 +2,6 @@
 
 import { useGameUI } from "./GameUIContext";
 
-/**
- * Placeholder heads-up display. Values are hard-coded until game state exists.
- */
 export default function Hud() {
   const { score, level, lines, isGameOver } = useGameUI();
 
