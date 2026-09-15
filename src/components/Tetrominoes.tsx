@@ -1,4 +1,10 @@
-export function TetrominoBlock({ position, color }: { position: [number, number, number]; color: string }) {
+export function TetrominoBlock({
+  position,
+  color,
+}: {
+  position: [number, number, number];
+  color: string;
+}) {
   return (
     <mesh position={position}>
       <boxGeometry />
@@ -34,7 +40,7 @@ export function JTetromino() {
     <group>
       <TetrominoBlock position={[-1, 0, 0]} color="blue" />
       <TetrominoBlock position={[0, 0, 0]} color="blue" />
-      <TetrominoBlock position={[1, 0, 0]} color="blue"  />
+      <TetrominoBlock position={[1, 0, 0]} color="blue" />
       <TetrominoBlock position={[-1, -1, 0]} color="blue" />
     </group>
   );

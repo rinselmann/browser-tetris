@@ -11,7 +11,12 @@ import { Tetrion } from "./Tetrion";
 export default function GameCanvas() {
   return (
     <Canvas camera={{ position: [3, 3, 5], fov: 50 }} className="bg-board-bg">
-      <OrthographicCamera makeDefault position={[0, 5, 0]} rotation={[-Math.PI / 2, 0, 0]} zoom={40} />
+      <OrthographicCamera
+        makeDefault
+        position={[0, 5, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        zoom={40}
+      />
       <ambientLight intensity={0.6} />
       <directionalLight position={[5, 8, 5]} intensity={2} />
       <Tetrion />
