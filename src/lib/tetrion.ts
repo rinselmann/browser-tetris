@@ -275,7 +275,7 @@ export function copyPlayfield(src: Playfield, dst: Playfield) {
 export interface TetrionConfig {
   level?: number;
   moveLockMaxResets?: number;
-  maxLockTime: number;
+  maxLockTime?: number;
 }
 
 export class DefaultTetrion implements ITetrion {
