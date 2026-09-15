@@ -1,6 +1,6 @@
 # browser-tetris
 
-A small browser based Tetris clone. The app consists of a Nextjs wrapper around a 3d game view rendered using React Three Fiber. 
+A small browser based Tetris clone. The app consists of a Nextjs wrapper around a 3d game view rendered using React Three Fiber.
 
 ## How to run
 
@@ -28,13 +28,25 @@ npm install
 npm run dev     # http://localhost:3000
 ```
 
-You should see a slowly rotating cyan cube you can orbit with the mouse, plus a HUD overlay in the
-corners. For a production build:
+You should see a playable board: pieces fall, lock and clear, with a HUD showing score, level and
+lines, and a Game Over message on top-out. For a production build:
 
 ```bash
 npm run build
 npm start
 ```
+
+### Controls
+
+| Key           | Action                   |
+| ------------- | ------------------------ |
+| `Left` / `A`  | Move left                |
+| `Right` / `D` | Move right               |
+| `Up` / `W`    | Rotate counter-clockwise |
+| `Down` / `S`  | Rotate clockwise         |
+| `Space`       | Soft drop (hold)         |
+
+Hard drop and hold are not bound yet — see "What's incomplete".
 
 ### Scripts
 
@@ -54,18 +66,18 @@ npm start
 
 ## Choices and tradeoffs
 
-**Next.js/React Three Fiber**. Next.js is used for the wrapper and build/dev 
+**Next.js/React Three Fiber**. Next.js is used for the wrapper and build/dev
 environment. The main gameplay area is rendered using React Three Fiber. Currently
 the graphics are full 3d, but very simple, with the idea that in the future,
-the pieces would be given more texture, and lighting, cinematic camera motion, 
+the pieces would be given more texture, and lighting, cinematic camera motion,
 and fx could be used for things like line clearing, game intro/ending, etc.
 
-**Focus on Gameplay**. This app focuses on the primary gameplay of Tetris, over 
+**Focus on Gameplay**. This app focuses on the primary gameplay of Tetris, over
 providing a more "full" game experience in order to limit the scope for time.
 
-**Gameplay based on [Gameplay of Tetris](https://tetris.wiki/Gameplay_of_Tetris) and 
+**Gameplay based on [Gameplay of Tetris](https://tetris.wiki/Gameplay_of_Tetris) and
 [Tetris Guideline](https://tetris.wiki/Tetris_Guideline).** The majority of the
-time on this demo was spent polishing gameplay so that it was smooth and also followed
+time on this demo was spent polishing gameplay so that it is smooth and also follows
 standard Tetris guidelines. The tradeoff is that other game features are missing
 from this demo, such as high score list, game dashboard, sound, etc.
 
@@ -75,98 +87,92 @@ and the five-candidate wall-kick tables (with the separate table for I) that mak
 kick-outs behave the way players expect.
 
 **Tests are logic-only, on purpose.** Vitest runs in the `node` environment and its `include` glob
-only matches `.ts`, not `.tsx`. Game state and Tetris rules — rotation, wall kicks, collision, line 
+only matches `.ts`, not `.tsx`. Game state and Tetris rules — rotation, wall kicks, collision, line
 clears — are tested thoroughly, but UI components are not currently tested just to limit the scope.
 
 ## Spec conformance
 
 `src/lib/tetrion.test.ts` checks the tetrion against the wiki pages rather than against its own
-behaviour, so the suite is the record of how far the implementation has got.
+behaviour, so the suite is the record of how correct the implementation is.
 
-**Verified correct.** The base rotation maths and all four states of every piece; the SRS kick
-tables, their values, their vertical sign and the transition indexing; the 7-bag generator, which
-deals a full permutation before reshuffling and never strands a piece more than twelve draws; and
-movement, collision and top-out detection.
+**Verified correct.** 75 passing tests cover the base rotation maths and all four states of every
+piece; the SRS kick tables, their values, their vertical sign and the transition indexing; the
+7-bag generator, which deals a full permutation before reshuffling and never strands a piece more
+than twelve draws; movement, collision and top-out; line clearing through to a tetris; the
+100/300/500/800 × level scoring and the level-every-ten-lines progression; the guideline gravity
+curve; lock delay with its move resets and fifteen-reset budget; the 20× soft drop and its one
+point per cell; and guideline spawn columns.
 
 Three deviations were found by the first pass of this suite and have since been fixed: the kick
 offsets were vertically inverted (the wiki tables are y-up, the playfield indexes rows top-down),
-the J and L shapes were attached to each other's names, and `isGameOver` was never set on a blocked
-spawn. The tests that caught them are still in place.
+the J and L shapes were attached to each other's names, and `isGameOver` was never set on a
+blocked spawn. The tests that caught them are still in place.
 
-**Still red on purpose.** Around 42 tests fail because the feature they describe does not exist
-yet, not because anything is wrong. They are listed below and they go green as each feature lands.
+**Still red on purpose.** 10 tests fail — 3 for hard drop, 4 for hold, 3 for the ghost piece —
+because those features have not been implemented yet.
 
 ## Todo
 
-[x] initialize tetrion
-[x] spawn tetronimo
-[x] tick tetrion
-[x] tetronimo falling
-[x] rotation/movement
-[x] soft drop (20x)
-[x] handle wallkicks
-[x] line clearing
-[x] lock delay
-[ ] hard drop
-[ ] show next tetronimo
-[ ] implement hold tetronimo
+- [x] initialize tetrion
+- [x] spawn tetronimo
+- [x] tick tetrion
+- [x] tetronimo falling
+- [x] rotation/movement
+- [x] soft drop (20x)
+- [x] handle wallkicks
+- [x] line clearing
+- [x] lock delay
+- [ ] hard drop
+- [ ] show next tetronimo
+- [ ] implement hold tetronimo
+- [ ] game start dialog
+- [ ] game end/restart dialog
 
 ## What's incomplete
 
-The game core exists in `src/lib/tetrion.ts` — spawning, gravity, movement, rotation with wall
-kicks, soft drop and locking — driven by `src/components/Tetrion.tsx`. Everything below has failing
-tests waiting for it in `src/lib/tetrion.test.ts`, so `npm run test:run` doubles as the to-do list.
-Measured against [the gameplay spec](https://tetris.wiki/Gameplay_of_Tetris):
+`src/lib/tetrion.ts` holds the game core — spawning, gravity, movement, rotation with wall kicks,
+soft drop, lock delay, locking, line clearing, scoring and levels — driven by
+`src/components/Tetrion.tsx`. What is left:
 
-- **No line clearing** — completed rows are never detected or removed, so the field only fills up.
-  6 failing tests.
-- **No scoring or levels** — `score`, `level` and `linesCleared` exist as fields but are never
-  updated, and gravity is a fixed interval instead of the guideline curve
-  `(0.8 - (level - 1) * 0.007) ^ (level - 1)` seconds per row. 10 failing tests.
-- **No lock delay** — a piece locks the instant it cannot fall, with none of the 0.5 s and
-  15 move-resets the guideline allows. 6 failing tests.
-- **No hard drop, hold, or ghost piece.** `nextTetromino` is tracked but never shown. 10 failing
-  tests, written against a `PlannedTetrion` interface declared in the test file — `hardDrop()`,
-  `hold()`, `heldTetromino`, `ghostPosition` — so they name the API to build without `tetrion.ts`
-  having to declare it yet.
-- **Soft drop is 4x gravity**, where the guideline is 20x, and it awards no points. 2 failing
-  tests, measured at level 10 because at level 1 both rates happen to land on 0.05 s per row.
-- **Spawn placement is off-guideline** — pieces spawn at column 4 rather than centred at column 3,
-  and inside the visible field rather than in buffer rows above it. 4 failing tests.
-- **No UI/component tests** — deliberate, see above.
-- **No E2E tests, no CI pipeline, no coverage thresholds.**
-- **No persistence** — no high scores, no settings.
+- **No hard drop, hold, or ghost piece.** 10 failing tests are waiting for them in
+  `src/lib/tetrion.test.ts`, written against a `PlannedTetrion` interface declared in the test file
+  — `hardDrop()`, `hold()`, `heldTetromino`, `ghostPosition` — so they name the API to build
+  without `tetrion.ts` having to declare it yet.
+- **No next-piece preview.** `nextTetromino` is tracked on the tetrion but nothing renders it.
+- **The asset pack is checked in but unused.** `src/assets/` holds block sprites, UI frames, music
+  and sound effects; no code references any of them yet, so the game runs silent with plain
+  coloured cubes.
+- **A leftover placeholder.** `src/lib/example.ts` and its test still exist from the scaffold and
+  can go whenever.
+- **No persistence** — no high scores, resume after page refresh, or settings
 - **A benign console warning** — `THREE.Clock: This module has been deprecated` comes from inside
   `@react-three/fiber`, not from this code. It clears when R3F updates its internals.
-- **No accessibility or mobile input work.** A WebGL canvas is opaque to screen readers, and there
-  are no touch controls.
 
 ## Next steps
 
-Suggested build order, roughly dependency-first:
-
-1. **Domain types and constants** in `src/lib/` — `Cell`, `Piece`, `Board`, the seven tetromino
-   shapes, board dimensions.
-2. **Pure functions, test-first** — spawn, rotate
-   ([SRS](https://tetris.wiki/Super_Rotation_System) with wall kicks), collision detection, lock,
-   line clear, scoring. This is what the Vitest setup exists for.
-3. **State management** — a reducer over the pure functions, exposed through a `useGame` hook.
-4. **Input and timing** — keyboard handling (DAS/ARR for held keys) and a gravity loop driven by
-   `useFrame` inside the Canvas.
-5. **Real board rendering** — replace `PlaceholderBlock` with an instanced mesh so 200+ cells stay
-   one draw call, plus a ghost piece and a next/hold preview.
-6. **Scoring, levels, and game-over UI** wired into the HUD.
-7. **Add UI tests when there's UI worth testing** — install `jsdom` and `@testing-library/react`
-   for DOM chrome, and `@react-three/test-renderer` for scene-graph assertions (it builds the
-   three.js graph without needing a WebGL context). Then widen the Vitest `include` glob to `.tsx`
-   and switch the environment to `jsdom`.
-8. **E2E and CI** — Playwright for a real browser run, and a GitHub Actions workflow running
-   `typecheck`, `lint`, `format:check`, `test:run`, and `build`.
+1. **Hard drop, hold and ghost piece** — the 10 red tests define
+   the API; binding hard drop and hold to keys follows in
+   `src/components/InputControls.tsx`.
+2. **Performance Pass** Due to time constraints and the fact  
+   that 3d resources are not constantly being destroyed and
+   created, not much work went into verifying that resources
+   are cleaned up correctly.
+3. **Next-piece and hold previews** in the HUD, reading
+   `nextTetromino` and `heldTetromino`.
+4. **Persistance** The initial pass of this would likely use a
+   simple client authoritative model, where a backend api is
+   provided simply to provide remotely accessible gamestate
+   storage.
+5. **Sound Effects**
+6. **Game Dashboard**
+7. **High Score List**
+8. **Accessibility**
 
 ## Credits
 
-Game assets — block sprites, music, and sound effects — come from the
-[Tetris Asset Pack](https://hat-tap.itch.io/tetris-asset-pack) by hat-tap on itch.io.
+Game assets in `src/assets/` — block sprites, UI art, music, and sound effects — come from the
+[Tetris Asset Pack](https://hat-tap.itch.io/tetris-asset-pack) by hat-tap on itch.io. They are
+checked in but not wired up yet.
 
 The test suite in `src/lib/tetrion.test.ts`, the spec verification behind it, and the
 "Spec conformance" section above were written by Claude (Opus 5) via
